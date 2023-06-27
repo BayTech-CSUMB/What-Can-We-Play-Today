@@ -1,5 +1,14 @@
 body {
     background-color: #17293E;
+    text-align: center;
+}
+
+h1 {
+    color: white;
+}
+
+h2 {
+    color: white;
 }
 
 button {
@@ -11,12 +20,21 @@ button {
     border: none;
 }
 
-#logo {
-    max-height: 10vh;
-    /* margin: 0 auto; */
+.background-box {
+    margin-top: 10vh;
+    display: inline-flex;
+    flex-direction: column;   
+    background-color: #171A21;
     text-align: center;
+    padding: 20vh;
+}
+
+#logo {
+    max-height: 8vh;
+    margin-top: 1.5vh;
 }
 
 nav {
     background-color: #0B0E13;
+    text-align: center;
 }
