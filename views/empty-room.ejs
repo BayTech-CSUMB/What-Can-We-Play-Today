@@ -2,17 +2,20 @@
 <%- include('partials/navbar.ejs') %>
 <%- include('partials/tempNav.ejs') %>
 <!-- This file and route are called EMPTY ROOM but it's only technically empty for the first user. After more users join it'll change dynamically with Javascript -->
-<h1>
-    EMPTY ROOM PAGE
-</h1>
+<div class="background-box">
+    <h1>
+        EMPTY ROOM PAGE
+    </h1>
 
-<h2>
-    <%= roomNumber %>
-</h2>
-<h2>
-    <%= username %>
-</h2>
+    <h2>
+        <%= roomNumber %>
+    </h2>
+    <h2>
+        <%= username %>
+    </h2>
 
-<% console.log(`Page: ${roomMembers}`); %>
-<% let temp = roomMembers.join(); %>
-<%= temp %>
+    
+    <% console.log(`Page: ${roomMembers}`); %>
+    <% let temp = roomMembers.join(); %>
+    <%= temp %>
+</div>
