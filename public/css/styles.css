@@ -1,0 +1,65 @@
+body {
+    background-color: #17293E;
+    text-align: center;
+}
+
+h1 {
+    color: white;
+}
+
+h2 {
+    color: white;
+}
+
+a {
+    color:white;
+}
+
+a:hover {
+    color:#9FE544;
+}
+
+label {
+    color: white;
+}
+
+button {
+    font-family: 'Kanit', sans-serif;
+    background-color: #6F9F31;
+    color: white;
+    padding: 1vh 2vw;
+    font-size: large;
+    border: none;
+    /* Key for Lift Off effect */
+    transition: all .3s ease-in-out;
+}
+
+button:hover {
+    /* the 3D transform here is key to the effect */
+    transform: translate3d(0px, -1px, 0px);
+    /* this stronger shadow sells that the card is being lifted up */
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+}
+
+#main-page-buttons {
+    margin-top: 2rem;
+}
+
+.background-box {
+    margin-top: 10vh;
+    display: inline-flex;
+    flex-direction: column;   
+    background-color: #171A21;
+    text-align: center;
+    padding: 20vh;
+}
+
+#logo {
+    max-height: 8vh;
+    margin-top: 1.5vh;
+}
+
+nav {
+    background-color: #0B0E13;
+    text-align: center;
+}
