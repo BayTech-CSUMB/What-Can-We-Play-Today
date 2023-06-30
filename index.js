@@ -2,7 +2,14 @@
 const express = require('express');
 const app = express();
 
-// Ensure API Keys and Confidential Data don't get published to Github 
+// const express2 = require('express');
+// const app2 = express2();
+// const server = require('http').createServer(app2);
+// const io = require('socket.io')(server, { cors: { origin: "*"}});
+
+const server = require('http').createServer(app);
+const io = require('socket.io')(server, { cors: { origin: "*"}});
+// // Ensure API Keys and Confidential Data don't get published to Github 
 const config = require("./private/keys.json");
 
 // Necessary for Steam Oauth
@@ -18,6 +25,7 @@ const steam = new SteamAuth({
 
 // Setup for keeping track of Users temporary data.
 const session = require('express-session'); 
+const { types } = require('util');
 app.use(session( {
     secret: config.sessionSecret, 
     resave: true,
@@ -89,44 +97,82 @@ app.get('/room-choice', (req, res) => {
 	res.render('room-choice');
 });
 
-app.get('/empty-room', async (req, res) => {
-	const roomNumber = 89641;
-	let roomMembers = [];
-	try {
-		let sql = `SELECT UserID
-					From Rooms
-					WHERE RoomID = 89641`;
+
+// app.get('/empty-room', async (req, res) => {
+// 	const roomNumber = 89641;
+// 	let roomMembers = [];
+// 	try {
+// 		let sql = `SELECT UserID
+// 					From Rooms
+// 					WHERE RoomID = 89641`;
 		
-		await database.each(sql, (err, row) => {
-			roomMembers.push(row.UserID);
-		});
-		console.log(`Final: ${roomMembers}`);
-		res.render('empty-room', {"roomNumber": roomNumber, "username": req.session.username, "roomMembers": roomMembers});
-	} catch (error){
-		console.log(error);
-	}
-	
+// 		await database.each(sql, (err, row) => {
+// 			roomMembers.push(req.session.username);
 
-    // TODO: Generate random room numbers instead of hard coding
-    //const roomNumber = 89641;
-    // console.log(`${req.session.username} has entered the room!`);
-    // let roomMembers = [];
+// 		});
+// 		console.log(`Final: ${roomMembers}`);
+// 	//  res.render('empty-room', {"roomNumber": roomNumber, "username": req.session.username, "roomMembers": roomMembers});
+
+// 	} catch (error){
+// 		console.log(error);
+// 	}
+
+//     // TODO: Generate random room numbers instead of hard coding
+//     //const roomNumber = 89641;
+//     console.log(`${req.session.username} has entered the room!`);
+// 	res.render('empty-room', {"roomNumber": roomNumber, "username": req.session.username, "roomMembers": roomMembers});
+//     // let roomMembers = [];
     
-	// let sql = `SELECT UserID
-	// 			FROM Rooms
-	// 			WHERE RoomID = 89641`;
+// 	// let sql = `SELECT UserID
+// 	// 			FROM Rooms
+// 	// 			WHERE RoomID = 89641`;
 
-    // database.each(sql, (err, row) => {
-    //     console.log(`DB Result: ${row.UserID}`);
-    //     roomMembers.push(row.UserID);
-	// 	console.log(roomMembers);
-    // });
-    //console.log(`Final: ${roomMembers}`);
+//     // database.each(sql, (err, row) => {
+//     //     console.log(`DB Result: ${row.UserID}`);
+//     //     roomMembers.push(row.UserID);
+// 	// 	console.log(roomMembers);
+//     // });
+//     //console.log(`Final: ${roomMembers}`);
 
-	//res.render('empty-room', {"roomNumber": roomNumber, "username": req.session.username, "roomMembers": roomMembers});
+// 	res.render('empty-room', {"roomNumber": roomNumber, "username": req.session.username, "roomMembers": roomMembers});
+// });
+
+app.get('/empty-room', (req, res) => {
+	// const roomMembers = [];
+	// roomMembers.push(req.session.username);
+
+	res.render('empty-room', {"username": req.session.username});
 });
+
+let roomMembers = [];
+io.on('connection', (socket) => {
+    const roomNumber = `89641`;
+    
+	console.log(`User connected: ${socket.id}`);
+
+	socket.on("message", (data) => {
+		console.log(`Receiever: ${data}`);
+        // console.log(typeof(data));
+		// io.emit(data);
+        if (!roomMembers.includes(data)) {
+            roomMembers.push(data);
+        }
+
+        socket.join("room-" + roomNumber);
+        io.sockets.in("room-" + roomNumber).emit('otherMsg', roomMembers.join(' '));
+        // socket.emit('finalMsg', roomMembers.join(' '));
+	});
+
+})
 
 // Tells server to listen for any request on Port 3000
-app.listen(3000, () => {
-	console.log(`Express Server Started`);
+// app.listen(3000, () => {
+//     console.log(`Express Server has Started`);
+// });
+
+server.listen(3000, () => {
+    console.log(`SocketIO Server has Started!`);
 });
+// server.listen(3001, () => {
+//     console.log(`SocketIO Server has Started!`);
+// });
