@@ -1,21 +1,35 @@
 <%- include('partials/header.ejs') %>
 <%- include('partials/navbar.ejs') %>
 <%- include('partials/tempNav.ejs') %>
+
 <!-- This file and route are called EMPTY ROOM but it's only technically empty for the first user. After more users join it'll change dynamically with Javascript -->
 <div class="background-box">
     <h1>
         EMPTY ROOM PAGE
     </h1>
-
-    <h2>
-        <%= roomNumber %>
-    </h2>
-    <h2>
+    <h2 id="toGrab">
         <%= username %>
-    </h2>
+    </h2>  
 
+    <input type = "text" class = "message">
+    <button onClick = "sendMessage()"> Send Message </button>
+    <script>
+        // TODO: Remember the WAN IP when using LiveShare.
+        const socket = io('http://localhost:3000');
+        // const socket = io('http://localhost:3001');
+        socket.on('connection');
+        
+        const sendMessage = () => {
+            let temp = document.querySelector("#toGrab").textContent;
+            //let temp = JSON.parse();
+            // let temp = document.getElementById("toGrab");
+		    socket.emit('message', temp);
+	    }
+
+        socket.on('otherMsg', (data) => {
+            document.querySelector('#toGrab').innerHTML = data;
+        });
+        // socket.emit('otherMsg', username);
+    </script>
     
-    <% console.log(`Page: ${roomMembers}`); %>
-    <% let temp = roomMembers.join(); %>
-    <%= temp %>
 </div>
