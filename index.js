@@ -1,41 +1,46 @@
 // Critical for Express itself
-const express = require('express');
+const express = require("express");
 const app = express();
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
 
-// const express2 = require('express');
-// const app2 = express2();
-// const server = require('http').createServer(app2);
-// const io = require('socket.io')(server, { cors: { origin: "*"}});
-
-const server = require('http').createServer(app);
-const io = require('socket.io')(server, { cors: { origin: "*"}});
-// // Ensure API Keys and Confidential Data don't get published to Github 
+const server = require("http").createServer(app);
+// TODO: Double check what CORS policy will mean for our app.
+const io = require("socket.io")(server, { cors: { origin: "*" } });
+// Ensure API Keys and Confidential Data don't get published to Github
 const config = require("./private/keys.json");
 
 // Necessary for Steam Oauth
 const SteamAuth = require("node-steam-openid");
 // Setup for Steam Oauth
 const steam = new SteamAuth({
-    // TODO: Eventually this will be set to the proper Domain name.
-    // realm: "http://localhost:3000",
-	realm: config.url,
-    returnUrl: config.url + "/auth/steam/authenticate",
-    apiKey: config.steamKey 
+  // TODO: Eventually this will be set to the proper Domain name.
+  realm: config.url,
+  returnUrl: config.url + "/auth/steam/authenticate",
+  apiKey: config.steamKey,
 });
 
 // Setup for keeping track of Users temporary data.
-const session = require('express-session'); 
-const { types } = require('util');
-app.use(session( {
-    secret: config.sessionSecret, 
+const session = require("express-session");
+const { types } = require("util");
+app.use(
+  session({
+    secret: config.sessionSecret,
     resave: true,
-    saveUninitialized: true
-}));
+    saveUninitialized: true,
+  })
+);
 
 // Setup and Connect a SQLite3 Database for Room/User data storage.
-const sqlite3 = require('sqlite3').verbose();
+const sqlite3 = require("sqlite3").verbose();
 let databaseFilePath = `./private/rooms.db`;
-let database = new sqlite3.Database(databaseFilePath, sqlite3.OPEN_READWRITE, (_) => { console.log('Connected to database!')});
+let database = new sqlite3.Database(
+  databaseFilePath,
+  sqlite3.OPEN_READWRITE,
+  (_) => {
+    console.log("Connected to database!");
+  }
+);
 
 // Tell Express which Templating Engine we're using
 app.set("view engine", "ejs");
@@ -45,134 +50,116 @@ app.use(express.static("public"));
 // app.use(express.urlencoded({ extended: true }));
 
 // corresponds to page.com
-app.get('/', (req, res) => {
-	res.render('index') //might need to be changed to res.render('page')
+app.get("/", (req, res) => {
+  res.render("index");
 });
 
-app.get('/privacy-policy', (req, res) => {
-	res.render('privacy-policy')
+app.get("/privacy-policy", (req, res) => {
+  res.render("privacy-policy");
 });
 
-//Redirects user to steam login page
-app.get("/auth/steam", async (req, res) =>{
-	const redirectUrl = await steam.getRedirectUrl();
-	return res.redirect(redirectUrl);
+// Redirects user to steam login page
+app.get("/auth/steam", async (req, res) => {
+  const redirectUrl = await steam.getRedirectUrl();
+  return res.redirect(redirectUrl);
 });
 
-//Gets user information and renders the rooms page
-app.get("/auth/steam/authenticate", async(req, res)=>{
-	try{
-		const user = await steam.authenticate(req);
-        // DEBUG: Confirm the Users account details.
-		// console.log(user);
-        // TODO: Check that this cookie storage method is best practices.
-        // DEBUG: Check indexing into User obj
-        // console.log(user['username'], user['steamid']);
-        // localStorage.setItem("username", user['username']);
-        // localStorage.setItem("userID", user['steamid']);
-		req.session.username = user['username'];
-		// console.log(req.session.username);
-        // console.log(user['steamid']);
-		// console.log(req.session.username);
-		console.log(`${user['username']} has logged in!`);
+// Gets user information and renders the rooms page
+app.get("/auth/steam/authenticate", async (req, res) => {
+  try {
+    const user = await steam.authenticate(req);
+    // DEBUG: Confirm the Users account details.
+    // console.log(user);
+    // TODO: Check that this cookie storage method is best practices.
+    req.session.username = user["username"];
+    req.session.steamID = user["steamid"];
+    req.session.profileImg = user["avatar"]["medium"];
 
-		res.render('room-choice');
-	} catch (error){
-		console.error("couldnt fetch");
-        console.error(error);
-	}
-})
+    res.cookie("steamID", user["steamid"]);
+    res.cookie("username", user["username"]);
+    res.cookie("avatar", user["avatar"]["medium"]);
 
-app.get('/steam-login', (req, res) => {
-	res.render('steam-login')
+    let sql = "INSERT INTO Users[(userID)] VALUES " + user[`steamid`];
+    console.log(sql);
+    // DEBUG:
+    // console.log(`${user['username']} has logged in!`);
+    res.render("room-choice");
+  } catch (error) {
+    console.error("ERROR: Couldnt Fetch");
+    console.error(error);
+  }
 });
 
-app.get('/alt-login', (req, res) => {
-	res.render('alt-login')
+app.get("/steam-login", (req, res) => {
+  res.render("steam-login");
 });
 
-app.get('/room-choice', (req, res) => {
-    // const temp = localStorage.getItem("userID");
-    // console.log(temp);
-	res.render('room-choice');
+app.get("/alt-login", (req, res) => {
+  res.render("alt-login");
 });
 
+app.get("/room-choice", (req, res) => {
+  // const temp = localStorage.getItem("userID");
+  // console.log(temp);
+  res.render("room-choice");
+});
 
-// app.get('/empty-room', async (req, res) => {
-// 	const roomNumber = 89641;
-// 	let roomMembers = [];
-// 	try {
-// 		let sql = `SELECT UserID
-// 					From Rooms
-// 					WHERE RoomID = 89641`;
-		
-// 		await database.each(sql, (err, row) => {
-// 			roomMembers.push(req.session.username);
-
-// 		});
-// 		console.log(`Final: ${roomMembers}`);
-// 	//  res.render('empty-room', {"roomNumber": roomNumber, "username": req.session.username, "roomMembers": roomMembers});
-
-// 	} catch (error){
-// 		console.log(error);
-// 	}
-
-//     // TODO: Generate random room numbers instead of hard coding
-//     //const roomNumber = 89641;
-//     console.log(`${req.session.username} has entered the room!`);
-// 	res.render('empty-room', {"roomNumber": roomNumber, "username": req.session.username, "roomMembers": roomMembers});
-//     // let roomMembers = [];
-    
-// 	// let sql = `SELECT UserID
-// 	// 			FROM Rooms
-// 	// 			WHERE RoomID = 89641`;
-
-//     // database.each(sql, (err, row) => {
-//     //     console.log(`DB Result: ${row.UserID}`);
-//     //     roomMembers.push(row.UserID);
-// 	// 	console.log(roomMembers);
-//     // });
-//     //console.log(`Final: ${roomMembers}`);
-
-// 	res.render('empty-room', {"roomNumber": roomNumber, "username": req.session.username, "roomMembers": roomMembers});
-// });
-
-app.get('/empty-room', (req, res) => {
-	// const roomMembers = [];
-	// roomMembers.push(req.session.username);
-
-	res.render('empty-room', {"username": req.session.username});
+app.get("/empty-room", (req, res) => {
+  res.render("empty-room", {
+    username: req.session.username,
+    steamID: req.session.steamID,
+  });
 });
 
 let roomMembers = [];
-io.on('connection', (socket) => {
-    const roomNumber = `89641`;
-    
-	console.log(`User connected: ${socket.id}`);
+let ids = [];
+//Socket.io used to room member data to the front end
+io.on("connection", (socket) => {
+  const roomNumber = `89641`;
+  // DEBUG:
+  // console.log(`User connected: ${socket.id}`);
 
-	socket.on("message", (data) => {
-		console.log(`Receiever: ${data}`);
-        // console.log(typeof(data));
-		// io.emit(data);
-        if (!roomMembers.includes(data)) {
-            roomMembers.push(data);
-        }
+  socket.on("message", (data) => {
+    // DEBUG:
+    // console.log(`Receiever: ${data}`);
+    // let exists = false;
+    // for (let i = 0; i < data.length; i++) {
+    //     if (!roomMembers.includes(data[i][0])) {
+    //         exists = false;
+	// 		roomMembers.push(data);
 
-        socket.join("room-" + roomNumber);
-        io.sockets.in("room-" + roomNumber).emit('otherMsg', roomMembers.join(' '));
-        // socket.emit('finalMsg', roomMembers.join(' '));
-	});
+    //     } else {
+    //         exists = true;
+    //     }
+    // }
 
-})
+	if (!ids.includes(data.steamID)){
+		roomMembers.push(data);
+        ids.push(data.steamID);
+	}
 
-// Tells server to listen for any request on Port 3000
-// app.listen(3000, () => {
-//     console.log(`Express Server has Started`);
-// });
+    console.log(`Room Members`);
+    console.log(roomMembers);
+
+    socket.join("room-" + roomNumber);
+    io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
+    // io.sockets.in("room-" + roomNumber).emit('otherMsg', roomMembers.join(' '));
+  });
+});
+
+app.get("/list", (req, res) => {
+  var id = req.session.steamID;
+  let sql = `SELECT UserID FROM Users WHERE UserID = ${id}`;
+  database.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error(err.message);
+    } else {
+      console.log(rows[0].UserID);
+      res.render("list", { steamID: rows[0].UserID });
+    }
+  });
+});
 
 server.listen(3000, () => {
-    console.log(`SocketIO Server has Started!`);
+  console.log(`SocketIO Server has Started!`);
 });
-// server.listen(3001, () => {
-//     console.log(`SocketIO Server has Started!`);
-// });

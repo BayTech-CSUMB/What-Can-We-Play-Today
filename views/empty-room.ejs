@@ -9,27 +9,62 @@
     </h1>
     <h2 id="toGrab">
         <%= username %>
-    </h2>  
+    </h2>
+    <input type = "text" id = "steamID">  
 
     <input type = "text" class = "message">
-    <button onClick = "sendMessage()"> Send Message </button>
-    <script>
-        // TODO: Remember the WAN IP when using LiveShare.
-        const socket = io('http://localhost:3000');
-        // const socket = io('http://localhost:3001');
-        socket.on('connection');
-        
-        const sendMessage = () => {
-            let temp = document.querySelector("#toGrab").textContent;
-            //let temp = JSON.parse();
-            // let temp = document.getElementById("toGrab");
-		    socket.emit('message', temp);
-	    }
+    <body onload = "sendMessage()">
+    <a href = "/list">
+    <button> Generate List </button>
+    </a>
 
-        socket.on('otherMsg', (data) => {
-            document.querySelector('#toGrab').innerHTML = data;
-        });
-        // socket.emit('otherMsg', username);
-    </script>
-    
+    <div id="toGen">
+    </div>
 </div>
+
+<script>
+    // window.onload = sendMessage();
+    // TODO: Remember the WAN IP when using LiveShare.
+    // const socket = io('http://localhost:3000'); //config.url
+    // socket.on('connection');
+    
+    socket.on('connection', () => {
+        let temp = [];
+        temp.push(Cookies.get('steamID'));
+        temp.push(Cookies.get('username'));
+        temp.push(Cookies.get('avatar'));
+        socket.emit('message', temp);
+    });
+
+    console.log(Cookies.get('steamID'));
+    const sendMessage = () => {
+        //let temp = document.querySelector("#toGrab").textContent;
+        let temp = [];
+        
+        let steamID = Cookies.get('steamID');
+        let username = Cookies.get('username');
+        let avatar = Cookies.get('avatar');
+        socket.emit('message', {steamID: steamID, username: username, avatar: avatar});
+        // temp.push(Cookies.get('steamID'));
+        // temp.push(Cookies.get('username'));
+        // temp.push(Cookies.get('avatar'));
+        // socket.emit('message', temp);
+    }
+
+    socket.on('otherMsg', (data) => {
+        // document.querySelector('#toGrab').innerHTML = data;
+        console.log(data);
+        let divAppend = document.getElementById('toGen');
+
+        for (let i = 0; i < data.length; i++){
+            console.log(data[i].avatar);
+            // let HTML = `<img src = "${data[i][2]}">`;
+            //divAppend.appendChild(HTML);
+            let link = (data[i].avatar);
+            divAppend.innerHTML += `<img src = "${link}" alt="Profile Image">`;
+            // divAppend.innerHTML += HTML;
+
+            // document.querySelector("#toGen").innerHTML += HTML;
+        }
+    });
+</script>
