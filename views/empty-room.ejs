@@ -25,8 +25,8 @@
 <script>
     // window.onload = sendMessage();
     // TODO: Remember the WAN IP when using LiveShare.
-    // const socket = io('http://localhost:3000'); //config.url
-    // socket.on('connection');
+    const socket = io('http://localhost:3000'); //config.url
+    socket.on('connection');
     
     socket.on('connection', () => {
         let temp = [];
@@ -50,21 +50,19 @@
         // temp.push(Cookies.get('avatar'));
         // socket.emit('message', temp);
     }
-
     socket.on('otherMsg', (data) => {
-        // document.querySelector('#toGrab').innerHTML = data;
         console.log(data);
+
+        //Setup the image div with the first user that joins
         let divAppend = document.getElementById('toGen');
+        let current = `<img src = "${data[0].avatar}"">`;
+        divAppend.innerHTML = current;
 
-        for (let i = 0; i < data.length; i++){
-            console.log(data[i].avatar);
-            // let HTML = `<img src = "${data[i][2]}">`;
-            //divAppend.appendChild(HTML);
-            let link = (data[i].avatar);
-            divAppend.innerHTML += `<img src = "${link}" alt="Profile Image">`;
-            // divAppend.innerHTML += HTML;
-
-            // document.querySelector("#toGen").innerHTML += HTML;
+        //Appends other users that join to the image div
+        for (let i = 1; i < data.length; i++){
+            let HTML = `<img src = "${data[i].avatar}"">`;
+            current += HTML;
+            divAppend.innerHTML = current;
         }
     });
 </script>
