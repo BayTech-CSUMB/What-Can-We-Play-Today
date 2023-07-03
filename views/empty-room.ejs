@@ -3,61 +3,69 @@
 <%- include('partials/tempNav.ejs') %>
 
 <!-- This file and route are called EMPTY ROOM but it's only technically empty for the first user. After more users join it'll change dynamically with Javascript -->
-<div class="background-box">
-    <h1>
-        EMPTY ROOM PAGE
-    </h1>
-    <h2 id="toGrab">
-        <%= username %>
-    </h2>
-    <input type = "text" id = "steamID">  
+<div class="gradient-background">
+    <h1 class="room-title"> ROOM CODE </h1>
+    <!-- TODO: Ask for which underline. 1 vote for "Controller" -->
+    <h1 class="room-number"> <%= roomNumber %> </h1>
+    <div class="background-box">
+        <h4 style="text-decoration: underline; color: #b1b1b1;"> MEMBERS </h4>
+        <!-- TODO: Unsure what these text fields were for. -->
+        <!-- <input type = "text" id = "steamID">  
+        <input type = "text" class = "message"> -->
 
-    <input type = "text" class = "message">
-    <body onload = "sendMessage()">
-    <a href = "/list">
-    <button> Generate List </button>
-    </a>
-
-    <div id="toGen">
+        <body onload = "sendMessage()">
+            <div id="toGen"></div>
+            <br>
+            <a href = "/list">
+                <button> Generate List </button>
+            </a>
+            <!-- TODO: Use proper CSS styling here instead of BRs -->
+            <br>
+            <!-- TODO: Make it so this copys something to your clipboard and then pops up a confirmation for the user that it did. -->
+            <button> Copy Room Link </button>
+            <br>
+            <!-- TODO: Make this actually do something -->
+            <button style="background-color: #C75858"> Leave Room </button>
     </div>
-</div>
-
-<script>
-    // window.onload = sendMessage();
-    // TODO: Remember the WAN IP when using LiveShare.
-    const socket = io('http://localhost:3000'); //config.url
-    socket.on('connection');
-    
-    socket.on('connection', () => {
-        let temp = [];
-        temp.push(Cookies.get('steamID'));
-        temp.push(Cookies.get('username'));
-        temp.push(Cookies.get('avatar'));
-        socket.emit('message', temp);
-    });
-
-    console.log(Cookies.get('steamID'));
-    const sendMessage = () => {
-        //let temp = document.querySelector("#toGrab").textContent;
-        let temp = [];
-        
-        let steamID = Cookies.get('steamID');
-        let username = Cookies.get('username');
-        let avatar = Cookies.get('avatar');
-        socket.emit('message', {steamID: steamID, username: username, avatar: avatar});
-        // temp.push(Cookies.get('steamID'));
-        // temp.push(Cookies.get('username'));
-        // temp.push(Cookies.get('avatar'));
-        // socket.emit('message', temp);
-    }
-    socket.on('otherMsg', (data) => {
-        console.log(data);
-
+        <script>
+            // window.onload = sendMessage();
+            // TODO: Remember the WAN IP when using LiveShare.
+            const socket = io('http://63.249.99.174:31905'); //config.url
+            socket.on('connection');
+            
+            socket.on('connection', () => {
+                let temp = [];
+                temp.push(Cookies.get('steamID'));
+                temp.push(Cookies.get('username'));
+                temp.push(Cookies.get('avatar'));
+                temp.push(Cookies.get('roomNumber'));
+                socket.emit('message', temp);
+            });
+            
+            //console.log(Cookies.get('steamID'));
+            const sendMessage = () => {
+                //let temp = document.querySelector("#toGrab").textContent;
+                let temp = [];
+                
+                let steamID = Cookies.get('steamID');
+                let username = Cookies.get('username');
+                let avatar = Cookies.get('avatar');
+                socket.emit('message', {steamID: steamID, username: username, avatar: avatar});
+                socket.emit('generate', {steamID: steamID, username: username, avatar: avatar});
+                // temp.push(Cookies.get('steamID'));
+                // temp.push(Cookies.get('username'));
+                // temp.push(Cookies.get('avatar'));
+                // socket.emit('message', temp);
+            }
+            
+            socket.on('otherMsg', (data) => {
+                //document.querySelector('#toGrab').innerHTML = data;
+                
         //Setup the image div with the first user that joins
         let divAppend = document.getElementById('toGen');
         let current = `<img src = "${data[0].avatar}"">`;
         divAppend.innerHTML = current;
-
+        
         //Appends other users that join to the image div
         for (let i = 1; i < data.length; i++){
             let HTML = `<img src = "${data[i].avatar}"">`;
@@ -66,3 +74,4 @@
         }
     });
 </script>
+</div>
