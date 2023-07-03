@@ -47,6 +47,7 @@ button:hover {
 
 .background-box {
     margin-top: 10vh;
+    max-width: 50vw;
     display: inline-flex;
     flex-direction: column;   
     background-color: #171A21;
@@ -54,6 +55,19 @@ button:hover {
     padding: 20vh;
 }
 
+.gradient-background {
+    background-image: linear-gradient(90deg,
+        rgba(0,0,0,0) 10%,
+        #213e59 30%,
+        #213e59 80%,
+        rgba(0,0,0,0) 90%);
+}
+
+/* TODO: Figure out SVG Logo */
+/* #logo {
+    width: auto;
+    height: 8vh;
+} */
 #logo {
     max-height: 8vh;
     margin-top: 1.5vh;
@@ -62,4 +76,5 @@ button:hover {
 nav {
     background-color: #0B0E13;
     text-align: center;
+    max-height: 10vh;
 }

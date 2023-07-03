@@ -2,15 +2,21 @@
 <%- include('partials/navbar.ejs') %>
 <%- include('partials/tempNav.ejs') %>
 
-<div class="background-box">
-    <h1>
-        ALT LOGIN PAGE
-    </h1>
-    <br>
-    <form method="post" action="/empty-room">
+<div class="gradient-background">
+    <div class="background-box">
+        <h1>
+            ALT LOGIN PAGE
+        </h1>
         <br>
-        <input type="text" id="userId" name="userId">
+        <p> Enter your Steam User ID or ID Code Here </p>
+        <!-- TODO: Have a guide on how to find it. -->
+        <!-- TODO: Have some disclaimer and a link to other pages on relevant information -->
         <br>
-        <button type="submit">CREATE/JOIN ROOM</button>
-    </form>
+        <form method="post" action="/empty-room">
+            <br>
+            <input type="text" id="userId" name="userId">
+            <br>
+            <button type="submit">CREATE/JOIN ROOM</button>
+        </form>
+    </div>
 </div>
