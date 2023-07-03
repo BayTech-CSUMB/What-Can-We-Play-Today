@@ -7,11 +7,10 @@
         ALT LOGIN PAGE
     </h1>
     <br>
-    <label for="user-id">Steam User ID OR ID Code</label>
-    <br>
-    <input type="text" id="user-id" name="user-id">
-    <br>
-    <a href="/room-choice">
-        <button>CREATE/JOIN ROOM</button>
-    </a>
+    <form method="post" action="/empty-room">
+        <br>
+        <input type="text" id="userId" name="userId">
+        <br>
+        <button type="submit">CREATE/JOIN ROOM</button>
+    </form>
 </div>

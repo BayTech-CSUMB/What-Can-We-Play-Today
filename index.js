@@ -3,6 +3,8 @@ const express = require("express");
 const app = express();
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
+const bodyParser = require("body-parser");
+const axios = require("axios");
 
 const server = require("http").createServer(app);
 // TODO: Double check what CORS policy will mean for our app.
@@ -28,7 +30,9 @@ app.use(
     secret: config.sessionSecret,
     resave: true,
     saveUninitialized: true,
-  })
+  }),
+  bodyParser.urlencoded({extended: true}),
+  bodyParser.json()
 );
 
 // Setup and Connect a SQLite3 Database for Room/User data storage.
@@ -111,6 +115,25 @@ app.get("/empty-room", (req, res) => {
   });
 });
 
+app.post("/empty-room", async (req, res) =>{
+  try{
+    let steamID = req.body.userId;
+    console.log("Getting user information...");
+    const response = await axios.get(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${config.steamKey}&steamids=${steamID}`);
+
+    //const players = response.data && response.data.response && response.data.response.players;
+    let user = response.data.response.players;
+    console.log(user[0].personaname);
+    console.log(user[0].steamid);
+    console.log(user[0].avatarmedium);
+
+  }
+  catch{
+    console.log("Could not fetch information...");
+  }
+  res.render("steam-login")
+});
+
 let roomMembers = [];
 let ids = [];
 //Socket.io used to room member data to the front end
@@ -134,12 +157,16 @@ io.on("connection", (socket) => {
     // }
 
 	if (!ids.includes(data.steamID)){
-		roomMembers.push(data);
+		    roomMembers.push(data);
         ids.push(data.steamID);
+
+        //socket.join("room-" + roomNumber);
+        //io.sockets.in("room-" + roomNumber).emit("otherMsg", data);
+
 	}
 
-    console.log(`Room Members`);
-    console.log(roomMembers);
+    //console.log(`Room Members`);
+    //console.log(roomMembers);
 
     socket.join("room-" + roomNumber);
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
