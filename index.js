@@ -31,7 +31,7 @@ app.use(
     resave: true,
     saveUninitialized: true,
   }),
-  bodyParser.urlencoded({extended: true}),
+  bodyParser.urlencoded({ extended: true }),
   bodyParser.json()
 );
 
@@ -102,6 +102,7 @@ app.get("/alt-login", (req, res) => {
   res.render("alt-login");
 });
 
+// Users get shown the CREATE or JOIN room buttons. Here they'll start the process of generating a Room Number and allowing others to join them.
 app.get("/room-choice", (req, res) => {
   // const temp = localStorage.getItem("userID");
   // console.log(temp);
@@ -109,29 +110,41 @@ app.get("/room-choice", (req, res) => {
 });
 
 app.get("/empty-room", (req, res) => {
+    let roomNumber = `89641`;
   res.render("empty-room", {
     username: req.session.username,
     steamID: req.session.steamID,
+    roomNumber: roomNumber
   });
 });
 
-app.post("/empty-room", async (req, res) =>{
-  try{
+//Used for alt login
+app.post("/empty-room", async (req, res) => {
+  try {
     let steamID = req.body.userId;
+    let roomNumber = "89641";
     console.log("Getting user information...");
-    const response = await axios.get(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${config.steamKey}&steamids=${steamID}`);
+    const response = await axios.get(
+      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${config.steamKey}&steamids=${steamID}`
+    );
 
     //const players = response.data && response.data.response && response.data.response.players;
     let user = response.data.response.players;
-    console.log(user[0].personaname);
-    console.log(user[0].steamid);
-    console.log(user[0].avatarmedium);
 
-  }
-  catch{
+    let username = user[0].personaname;
+    let profileImg = user[0].avatarmedium;
+
+    res.cookie("steamID", steamID);
+    res.cookie("username", username);
+    res.cookie("avatar", profileImg);
+    res.cookie("roomNumber", roomNumber);
+    res.render("empty-room", { 
+        username: username, 
+        steamID: steamID, 
+        roomNumber: roomNumber});
+  } catch {
     console.log("Could not fetch information...");
   }
-  res.render("steam-login")
 });
 
 let roomMembers = [];
@@ -139,38 +152,23 @@ let ids = [];
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
   const roomNumber = `89641`;
-  // DEBUG:
-  // console.log(`User connected: ${socket.id}`);
 
+  //Used to generate room with its members
   socket.on("message", (data) => {
-    // DEBUG:
-    // console.log(`Receiever: ${data}`);
-    // let exists = false;
-    // for (let i = 0; i < data.length; i++) {
-    //     if (!roomMembers.includes(data[i][0])) {
-    //         exists = false;
-	// 		roomMembers.push(data);
-
-    //     } else {
-    //         exists = true;
-    //     }
-    // }
-
-	if (!ids.includes(data.steamID)){
-		    roomMembers.push(data);
-        ids.push(data.steamID);
-
-        //socket.join("room-" + roomNumber);
-        //io.sockets.in("room-" + roomNumber).emit("otherMsg", data);
-
-	}
-
-    //console.log(`Room Members`);
-    //console.log(roomMembers);
-
+    if (!ids.includes(data.steamID)) {
+      roomMembers.push(data);
+      ids.push(data.steamID);
+    }
     socket.join("room-" + roomNumber);
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
-    // io.sockets.in("room-" + roomNumber).emit('otherMsg', roomMembers.join(' '));
+  });
+
+  // MAIN WORKHORSE FUNCTION. Gathers the SteamIDs of the room members and uses them to generate the massive list of shared games.
+  // Sort by amount of time played and then generate shared list
+  socket.on("generate", (data) => {
+    for(let i = 0; i < data.length; i++){
+      console.log(`Data from ${i}: `, data[i]);
+    }
   });
 });
 
