@@ -30,7 +30,7 @@
         <script>
             // window.onload = sendMessage();
             // TODO: Remember the WAN IP when using LiveShare.
-            const socket = io('http://***REMOVED***'); //config.url
+            const socket = io('http://localhost:3000'); //config.url
             socket.on('connection');
             
             socket.on('connection', () => {
