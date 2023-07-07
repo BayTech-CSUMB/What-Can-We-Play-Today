@@ -1,3 +1,38 @@
-<h2 id="toGrab">
-    <%= steamID %>
-</h2>
+<%- include('partials/header.ejs') %> <%- include('partials/navbar.ejs') %> 
+<%- include('partials/tempNav.ejs') %>
+
+<div id="toGrab"></div>
+
+<body onload="sendMessage()"></body>
+
+<script>
+  const socket = io("<%= url %>"); //config.url
+
+  socket.on("connection");
+
+  const sendMessage = () => {
+    let temp = [];
+
+    let steamID = Cookies.get("steamID");
+    let username = Cookies.get("username");
+    let avatar = Cookies.get("avatar");
+
+    socket.emit("generate", {
+      steamID: steamID,
+      username: username,
+      avatar: avatar,
+    });
+
+    socket.on('finalList', (data) => {
+      let textdiv = document.getElementById('toGrab');
+      let current = `<p>${data.games[1]}</p>`;
+      textdiv = current;
+        // console.log(data);
+
+      for (let i = 1; i < data.games.length; i++) {
+        current += `<p>${data.games[i]}</p>`;
+        textdiv.innerHTML = current;
+      }
+    });
+  };
+</script>

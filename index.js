@@ -4,6 +4,7 @@ const app = express();
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 const bodyParser = require("body-parser");
+const fetch = require("node-fetch");
 const axios = require("axios");
 
 const server = require("http").createServer(app);
@@ -110,11 +111,12 @@ app.get("/room-choice", (req, res) => {
 });
 
 app.get("/empty-room", (req, res) => {
-    let roomNumber = `89641`;
+  let roomNumber = `89641`;
   res.render("empty-room", {
     username: req.session.username,
     steamID: req.session.steamID,
-    roomNumber: roomNumber
+    roomNumber: roomNumber,
+    url: config.url,
   });
 });
 
@@ -138,15 +140,17 @@ app.post("/empty-room", async (req, res) => {
     res.cookie("username", username);
     res.cookie("avatar", profileImg);
     res.cookie("roomNumber", roomNumber);
-    res.render("empty-room", { 
-        username: username, 
-        steamID: steamID, 
-        roomNumber: roomNumber});
+    res.render("empty-room", {
+      username: username,
+      steamID: steamID,
+      roomNumber: roomNumber,
+    });
   } catch {
     console.log("Could not fetch information...");
   }
 });
 
+//Sockets used for members of the same room
 let roomMembers = [];
 let ids = [];
 //Socket.io used to room member data to the front end
@@ -163,26 +167,125 @@ io.on("connection", (socket) => {
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
   });
 
+  socket.on("newList", (data)=>{
+    io.emit('navigate');
+  });
+
   // MAIN WORKHORSE FUNCTION. Gathers the SteamIDs of the room members and uses them to generate the massive list of shared games.
   // Sort by amount of time played and then generate shared list
-  socket.on("generate", (data) => {
-    for(let i = 0; i < data.length; i++){
-      console.log(`Data from ${i}: `, data[i]);
+  socket.on("generate", async (data) => {
+    if (!ids.includes(data.steamID)) {
+      roomMembers.push(data);
+      ids.push(data.steamID);
     }
+
+    function findSimilarGames(user1, user2) {
+      const result = user1.filter((x) => user2.indexOf(x) !== -1);
+      return result;
+    }
+    // let idVar = req.cookies.steamID;
+    // let roomnumber = req.cookies.roomNumber;
+    // console.log(idVar + "this is the id");
+
+    // let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${data.steamID}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
+
+    // let response = await fetch(url);
+
+    // let data2 = await response.json();
+    // let allInfo = data2.response.games;
+    // let gameName2 = [];
+    // for (let i = 0; i < roomMembers.length; i++) {
+    //   for (let j = 0; j < allInfo.length; j++) {
+    //     gameName2.push(allInfo[j].name);
+    //   }
+    //   return gameName2;
+    // }
+
+    let roomMembersGames = [];
+    for (let i = 0; i < roomMembers.length; i++) {
+      let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${roomMembers[i].steamID}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
+
+      let response = await fetch(url);
+      let data2 = await response.json();
+      let allInfo = data2.response.games;
+      let gameCount = data2.response.game_count;
+    //   let allInfo = [];
+    //   allInfo.push(data2.response.games);
+    //   allInfo.push(data2.response.games);
+    //   console.log(allInfo);
+      let temp = [];
+      for (let j = 0; j < gameCount; j++) {
+        temp.push(allInfo[j].name);
+      }
+    //   console.log(temp);
+      roomMembersGames.push(temp);
+    }
+
+    // console.log(roomMembersGames);
+    // let gameName = [`Guild Wars 2`, `Risk of Rain`];
+    // // for (let i = 0; i < allInfo.length; i++){
+    // //     gameName.push(allInfo[i].name);
+    // // }
+
+    // let gameName2 = [`Guild Wars 2`];
+    // for (let i = 0; i < allInfo.length; i++){
+    //     gameName2.push(allInfo[i].name);
+    // }
+    let checkSame = [];
+    // DOES NOT HANDLE A SOLO MEMBER.
+    if (roomMembers.length > 2) {
+        checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
+        for (let i = 2; i < roomMembers.length; i++) {
+            checkSame = findSimilarGames(checkSame, roomMembersGames[i]);
+        }
+    } else {
+        checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
+    }
+
+    // let checkSame = [];
+    // if (roomMembers.length > 2) {
+    //     let temp = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
+    //     checkSame = findSimilarGames(temp, roomMembersGames[2]);
+    // } else {
+    //     checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
+    // }
+    console.log(checkSame);
+    socket.join("room-" + roomNumber);
+    io.sockets.in("room-" + roomNumber).emit("finalList", {roomMembers: roomMembers, games: checkSame});
   });
 });
 
-app.get("/list", (req, res) => {
-  var id = req.session.steamID;
-  let sql = `SELECT UserID FROM Users WHERE UserID = ${id}`;
-  database.all(sql, [], (err, rows) => {
-    if (err) {
-      console.error(err.message);
-    } else {
-      console.log(rows[0].UserID);
-      res.render("list", { steamID: rows[0].UserID });
-    }
-  });
+app.get("/list", async (req, res) => {
+  //   // var id = req.session.steamID;
+  //   // let sql = `SELECT UserID FROM Users WHERE UserID = ${id}`;
+  //   // database.all(sql, [], (err, rows) => {
+  //   //   if (err) {
+  //   //     console.error(err.message);
+  //   //   } else {
+  //   //     console.log(rows[0].UserID);
+  //   //     res.render("list", { steamID: rows[0].UserID });
+  //   //   }
+  //   // });
+
+  // let idVar = req.cookies.steamID;
+  // let roomnumber = req.cookies.roomNumber;
+  // // console.log(idVar + "this is the id");
+
+  // let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${idVar}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
+
+  // let response = await fetch(url);
+
+  // let data = await response.json();
+  // let allInfo = data.response.games;
+  // let gameName = [];
+  // for (let i = 0; i < allInfo.length; i++){
+  //     gameName.push(allInfo[i].name);
+  // }
+
+  // gameName = []; // empty array so that the page doesn't fill up immediately
+  // res.render("list", { games: gameName, steamID: idVar, roomNumber: roomnumber});
+
+  res.render("list", { url: config.url });
 });
 
 server.listen(3000, () => {
