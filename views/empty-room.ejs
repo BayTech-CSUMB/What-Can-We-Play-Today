@@ -16,6 +16,8 @@
         <body onload = "sendMessage()">
             <div id="toGen"></div>
             <br>
+            <!-- TODO: Ensure the "Host" of the room (the first user) can only click Generate -->
+            <button id="newList"> Temp </button>
             <a href = "/list">
                 <button> Generate List </button>
             </a>
@@ -30,7 +32,9 @@
         <script>
             // window.onload = sendMessage();
             // TODO: Remember the WAN IP when using LiveShare.
-            const socket = io('http://localhost:3000'); //config.url
+            const socket = io('<%= url %>'); //config.url
+
+            // const socket = io('http://localhost:3000'); //config.url
             socket.on('connection');
             
             socket.on('connection', () => {
@@ -51,15 +55,15 @@
                 let username = Cookies.get('username');
                 let avatar = Cookies.get('avatar');
                 socket.emit('message', {steamID: steamID, username: username, avatar: avatar});
-                socket.emit('generate', {steamID: steamID, username: username, avatar: avatar});
+                // socket.emit('generate', {steamID: steamID, username: username, avatar: avatar});
                 // temp.push(Cookies.get('steamID'));
                 // temp.push(Cookies.get('username'));
                 // temp.push(Cookies.get('avatar'));
                 // socket.emit('message', temp);
             }
             
-            socket.on('otherMsg', (data) => {
-                //document.querySelector('#toGrab').innerHTML = data;
+        socket.on('otherMsg', (data) => {
+        //document.querySelector('#toGrab').innerHTML = data;
                 
         //Setup the image div with the first user that joins
         let divAppend = document.getElementById('toGen');
@@ -73,5 +77,19 @@
             divAppend.innerHTML = current;
         }
     });
+
+    //Button used to dynamically reload page for all members
+    let button = document.getElementById('newList');
+    button.addEventListener('click', function(){
+        let steamID = Cookies.get('steamID');
+        let username = Cookies.get('username');
+        let avatar = Cookies.get('avatar');
+        socket.emit('newList', {steamID: steamID, username: username, avatar: avatar});
+    });
+
+    //redirects to list page
+    socket.on('navigate', function() {
+        window.location.href = "/list";
+    })
 </script>
 </div>
