@@ -79,10 +79,6 @@ app.get("/auth/steam/authenticate", async (req, res) => {
   }
 });
 
-app.get("/steam-login", (req, res) => {
-  res.render("steam-login");
-});
-
 //Used in case users want to login through their steam id
 app.get("/alt-login", (req, res) => {
   res.render("alt-login");
