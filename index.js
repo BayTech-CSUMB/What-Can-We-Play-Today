@@ -36,17 +36,6 @@ app.use(
   bodyParser.json()
 );
 
-// Setup and Connect a SQLite3 Database for Room/User data storage.
-const sqlite3 = require("sqlite3").verbose();
-let databaseFilePath = `./private/rooms.db`;
-let database = new sqlite3.Database(
-  databaseFilePath,
-  sqlite3.OPEN_READWRITE,
-  (_) => {
-    console.log("Connected to database!");
-  }
-);
-
 // Tell Express which Templating Engine we're using
 app.set("view engine", "ejs");
 // Specify the Folder for Statics
@@ -75,23 +64,18 @@ app.get("/auth/steam/authenticate", async (req, res) => {
     const user = await steam.authenticate(req);
     // DEBUG: Confirm the Users account details.
     // console.log(user);
-    // TODO: Check that this cookie storage method is best practices.
-    req.session.username = user["username"];
-    req.session.steamID = user["steamid"];
-    req.session.profileImg = user["avatar"]["medium"];
 
+    // TODO: Check that this cookie storage method is best practices.
     res.cookie("steamID", user["steamid"]);
     res.cookie("username", user["username"]);
     res.cookie("avatar", user["avatar"]["medium"]);
 
-    let sql = "INSERT INTO Users[(userID)] VALUES " + user[`steamid`];
-    console.log(sql);
-    // DEBUG:
-    // console.log(`${user['username']} has logged in!`);
+    // DEBUG: Checking who is logged in via Backend
+    console.log(`${user["username"]} has logged in!`);
+
     res.render("room-choice");
   } catch (error) {
-    console.error("ERROR: Couldnt Fetch");
-    console.error(error);
+    console.error(`ERROR: Couldn't Fetch! ${error}`);
   }
 });
 
@@ -99,6 +83,7 @@ app.get("/steam-login", (req, res) => {
   res.render("steam-login");
 });
 
+//Used in case users want to login through their steam id
 app.get("/alt-login", (req, res) => {
   res.render("alt-login");
 });
@@ -107,21 +92,30 @@ app.get("/alt-login", (req, res) => {
 app.get("/room-choice", (req, res) => {
   // const temp = localStorage.getItem("userID");
   // console.log(temp);
+  //let steamID = Cookies.get('steamID');
+  //console.log(steamID + "created the room");
+
   res.render("room-choice");
 });
 
 app.get("/empty-room", (req, res) => {
   let roomNumber = `89641`;
   res.render("empty-room", {
-    username: req.session.username,
-    steamID: req.session.steamID,
     roomNumber: roomNumber,
     url: config.url,
   });
 });
 
+app.post("/room-choice", async (req, res) => {
+  let roomNumber = `89641`;
+  res.render("empty-room", {
+    role: req.body.role,
+    roomNumber: roomNumber,
+    url: config.url,
+  });
+});
 //Used for alt login
-app.post("/empty-room", async (req, res) => {
+app.post("/alt-login", async (req, res) => {
   try {
     let steamID = req.body.userId;
     let roomNumber = "89641";
@@ -140,7 +134,7 @@ app.post("/empty-room", async (req, res) => {
     res.cookie("username", username);
     res.cookie("avatar", profileImg);
     res.cookie("roomNumber", roomNumber);
-    res.render("empty-room", {
+    res.render("room-choice", {
       username: username,
       steamID: steamID,
       roomNumber: roomNumber,
@@ -167,8 +161,8 @@ io.on("connection", (socket) => {
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
   });
 
-  socket.on("newList", (data)=>{
-    io.emit('navigate');
+  socket.on("newList", (data) => {
+    io.emit("navigate");
   });
 
   // MAIN WORKHORSE FUNCTION. Gathers the SteamIDs of the room members and uses them to generate the massive list of shared games.
@@ -179,112 +173,79 @@ io.on("connection", (socket) => {
       ids.push(data.steamID);
     }
 
+    // ----- FUNCTIONS ------
+
     function findSimilarGames(user1, user2) {
       const result = user1.filter((x) => user2.indexOf(x) !== -1);
       return result;
     }
-    // let idVar = req.cookies.steamID;
-    // let roomnumber = req.cookies.roomNumber;
-    // console.log(idVar + "this is the id");
 
-    // let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${data.steamID}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
-
-    // let response = await fetch(url);
-
-    // let data2 = await response.json();
-    // let allInfo = data2.response.games;
-    // let gameName2 = [];
-    // for (let i = 0; i < roomMembers.length; i++) {
-    //   for (let j = 0; j < allInfo.length; j++) {
-    //     gameName2.push(allInfo[j].name);
-    //   }
-    //   return gameName2;
-    // }
-
+    // We first start by gathering and generating all the games of each member
+    // roomMembersGames will be a 2D array with each index being another array of all the games of that user.
+    // TODO: Here is where we could filter out games before they're added into each users array.
     let roomMembersGames = [];
     for (let i = 0; i < roomMembers.length; i++) {
+      // Do our FETCH calls
       let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${roomMembers[i].steamID}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
-
       let response = await fetch(url);
-      let data2 = await response.json();
-      let allInfo = data2.response.games;
-      let gameCount = data2.response.game_count;
-    //   let allInfo = [];
-    //   allInfo.push(data2.response.games);
-    //   allInfo.push(data2.response.games);
-    //   console.log(allInfo);
+      let result = await response.json();
+      // Process results to two separate variables per user
+      let allInfo = result.response.games;
+      let gameCount = result.response.game_count;
+      // Build the temporary sub-array to be pushed at the end.
       let temp = [];
-      for (let j = 0; j < gameCount; j++) {
-        temp.push(allInfo[j].name);
-      }
-    //   console.log(temp);
+      for (let j = 0; j < gameCount; j++) temp.push(allInfo[j].name);
       roomMembersGames.push(temp);
     }
 
-    // console.log(roomMembersGames);
-    // let gameName = [`Guild Wars 2`, `Risk of Rain`];
-    // // for (let i = 0; i < allInfo.length; i++){
-    // //     gameName.push(allInfo[i].name);
-    // // }
-
-    // let gameName2 = [`Guild Wars 2`];
-    // for (let i = 0; i < allInfo.length; i++){
-    //     gameName2.push(allInfo[i].name);
-    // }
-    let checkSame = [];
-    // DOES NOT HANDLE A SOLO MEMBER.
-    if (roomMembers.length > 2) {
-        checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
-        for (let i = 2; i < roomMembers.length; i++) {
-            checkSame = findSimilarGames(checkSame, roomMembersGames[i]);
-        }
-    } else {
-        checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
-    }
-
+    // TODO: Delete this after consolidating the payload generation.
     // let checkSame = [];
+    // // DOES NOT HANDLE A SOLO MEMBER.
     // if (roomMembers.length > 2) {
-    //     let temp = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
-    //     checkSame = findSimilarGames(temp, roomMembersGames[2]);
+    //     checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
+    //     for (let i = 2; i < roomMembers.length; i++) {
+    //         checkSame = findSimilarGames(checkSame, roomMembersGames[i]);
+    //     }
     // } else {
     //     checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
     // }
-    console.log(checkSame);
+
+    // console.log(checkSame);
+
+    let sharedGameNames = [];
+    let ownedByWho = [];
+
+    // Will iterate through EVERY game in ALL members libraries so could possibly take some time (does the operation in O(n+n...) time where each n is the size of another users library).
+    for (let i = 0; i < roomMembersGames.length; i++) {
+      for (let j = 0; j < roomMembersGames[i].length; j++) {
+        let curGame = roomMembersGames[i][j];
+        // Checking if the current game is in out checked list or not
+        let indexOfGame = sharedGameNames.indexOf(curGame);
+        if (indexOfGame != -1) {
+          ownedByWho[indexOfGame].push(i);
+        } else {
+          // it IS NOT there so make a new entry
+          sharedGameNames.push(curGame);
+          let temp = [];
+          temp.push(i);
+          ownedByWho.push(temp);
+        }
+      }
+    }
+
     socket.join("room-" + roomNumber);
-    io.sockets.in("room-" + roomNumber).emit("finalList", {roomMembers: roomMembers, games: checkSame});
+    io.sockets
+      .in("room-" + roomNumber)
+      .emit("finalList", {
+        roomMembers: roomMembers,
+        games: sharedGameNames,
+        owners: ownedByWho,
+      });
+    // io.sockets.in("room-" + roomNumber).emit("finalList", {roomMembers: roomMembers, games: checkSame});
   });
 });
 
 app.get("/list", async (req, res) => {
-  //   // var id = req.session.steamID;
-  //   // let sql = `SELECT UserID FROM Users WHERE UserID = ${id}`;
-  //   // database.all(sql, [], (err, rows) => {
-  //   //   if (err) {
-  //   //     console.error(err.message);
-  //   //   } else {
-  //   //     console.log(rows[0].UserID);
-  //   //     res.render("list", { steamID: rows[0].UserID });
-  //   //   }
-  //   // });
-
-  // let idVar = req.cookies.steamID;
-  // let roomnumber = req.cookies.roomNumber;
-  // // console.log(idVar + "this is the id");
-
-  // let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${idVar}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
-
-  // let response = await fetch(url);
-
-  // let data = await response.json();
-  // let allInfo = data.response.games;
-  // let gameName = [];
-  // for (let i = 0; i < allInfo.length; i++){
-  //     gameName.push(allInfo[i].name);
-  // }
-
-  // gameName = []; // empty array so that the page doesn't fill up immediately
-  // res.render("list", { games: gameName, steamID: idVar, roomNumber: roomnumber});
-
   res.render("list", { url: config.url });
 });
 
