@@ -1,7 +1,11 @@
-<%- include('partials/header.ejs') %> <%- include('partials/navbar.ejs') %> 
-<%- include('partials/tempNav.ejs') %>
+<%- include('partials/header.ejs') %> <%- include('partials/navbar.ejs') %> <%-
+include('partials/tempNav.ejs') %>
 
 <div id="toGrab"></div>
+
+<hr />
+
+<div id="recGames"></div>
 
 <body onload="sendMessage()"></body>
 
@@ -23,15 +27,54 @@
       avatar: avatar,
     });
 
-    socket.on('finalList', (data) => {
-      let textdiv = document.getElementById('toGrab');
-      let current = `<p>${data.games[1]}</p>`;
-      textdiv = current;
-        // console.log(data);
+    socket.on("finalList", (data) => {
+      let roomMembers = data.roomMembers;
+      let sharedGameNames = data.games;
+      let ownedByWho = data.owners;
 
-      for (let i = 1; i < data.games.length; i++) {
-        current += `<p>${data.games[i]}</p>`;
-        textdiv.innerHTML = current;
+      function invertOwners(someArr) {
+        let temp = [];
+        for (let i = 0; i < roomMembers.length; i++) {
+          temp.push(i);
+        }
+        return filterOut(temp, someArr);
+      }
+
+      function convertToUser(someArr) {
+        let temp = ``;
+        for (let i = 0; i < someArr.length; i++) {
+          temp += `${roomMembers[someArr[i]].username} `;
+        }
+        return temp;
+      }
+
+      function filterOut(arr1, arr2) {
+        const result = arr1.filter((x) => arr2.indexOf(x) == -1);
+        return result;
+      }
+
+      // console.log(data);
+      //   let gamesList = data.games;
+      //   console.log(gamesList);
+
+      let textdiv = document.getElementById("toGrab");
+      let recDiv = document.querySelector("#recGames");
+
+      //   for (let i = 0; i < data.games.length; i++) {
+      //     textdiv.innerHTML += `<p style='color: white;'>${gamesList[i]}</p>`;
+      //   }
+
+      //   DEBUG: Output all NOT owned games
+      for (let i = 0; i < sharedGameNames.length; i++) {
+        if (ownedByWho[i].length != roomMembers.length) {
+          let users = convertToUser(invertOwners(ownedByWho[i]));
+          // let users = invertOwners(ownedByWho[i]);
+          recDiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]} is NOT owned by ${users} </p>`;
+          // console.log(`${sharedGameNames[i]} is NOT owned by ${users}`);
+        } else {
+          // Case for ALL owned
+          textdiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]}</p>`;
+        }
       }
     });
   };
