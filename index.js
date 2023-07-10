@@ -41,7 +41,9 @@ app.set("view engine", "ejs");
 // Specify the Folder for Statics
 app.use(express.static("public"));
 // Need this line to allow Express to parse values sent by POST forms
-// app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
+
+let existingRooms = [];
 
 // corresponds to page.com
 app.get("/", (req, res) => {
@@ -86,30 +88,55 @@ app.get("/alt-login", (req, res) => {
 
 // Users get shown the CREATE or JOIN room buttons. Here they'll start the process of generating a Room Number and allowing others to join them.
 app.get("/room-choice", (req, res) => {
-  // const temp = localStorage.getItem("userID");
-  // console.log(temp);
-  //let steamID = Cookies.get('steamID');
-  //console.log(steamID + "created the room");
-
   res.render("room-choice");
 });
 
-app.get("/empty-room", (req, res) => {
-  let roomNumber = `89641`;
-  res.render("empty-room", {
-    roomNumber: roomNumber,
-    url: config.url,
-  });
-});
-
+//Passes host role
 app.post("/room-choice", async (req, res) => {
-  let roomNumber = `89641`;
+  let roomNumber = Math.floor(Math.random()*90000) + 10000;
+
+    // Ensures that room numbers are random and unique so we don't have colliding room IDs.
+  while (existingRooms.includes(roomNumber)) {
+    roomNumber = Math.floor(Math.random()*90000) + 10000;
+  }
+
+// Add our now guaranteed unique room to the existing rooms & also add the number to the users cookies.
+  existingRooms.push(roomNumber);
+  res.cookie("roomNumber", roomNumber);
+
+// Render the next page for the Host now with the number on their page.
   res.render("empty-room", {
     role: req.body.role,
     roomNumber: roomNumber,
     url: config.url,
   });
 });
+
+app.get("/join-room", async (req, res) => {
+  res.render("join-room");
+}); 
+
+app.post("/join-room", (req, res) => {
+    let potentialRoomNum = req.body.roomnum;
+    console.log(existingRooms);
+    // console.log(potentialRoomNum);
+    // IF ELSE 
+    if (existingRooms.includes(potentialRoomNum)) {
+        console.log(`Room FOUND`);
+        res.cookie("roomNumber", potentialRoomNum);
+        res.render("empty-room", {roomNumber: potentialRoomNum});
+    } else {
+        console.log(`Room NOT FOUND`);
+    }
+});
+
+app.get("/empty-room", (req, res) => {
+  res.render("empty-room", {
+    roomNumber: roomNumber,
+    url: config.url,
+  });
+});
+
 //Used for alt login
 app.post("/alt-login", async (req, res) => {
   try {
@@ -145,15 +172,16 @@ let roomMembers = [];
 let ids = [];
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
-  const roomNumber = `89641`;
-
-  //Used to generate room with its members
+  // Used to generate room with its members
   socket.on("message", (data) => {
+    let roomNumber = data.roomNumber;
+    console.log(`Message Room Number: ${roomNumber}`);
+    socket.join("room-" + roomNumber);
+
     if (!ids.includes(data.steamID)) {
       roomMembers.push(data);
       ids.push(data.steamID);
     }
-    socket.join("room-" + roomNumber);
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
   });
 
@@ -194,20 +222,6 @@ io.on("connection", (socket) => {
       roomMembersGames.push(temp);
     }
 
-    // TODO: Delete this after consolidating the payload generation.
-    // let checkSame = [];
-    // // DOES NOT HANDLE A SOLO MEMBER.
-    // if (roomMembers.length > 2) {
-    //     checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
-    //     for (let i = 2; i < roomMembers.length; i++) {
-    //         checkSame = findSimilarGames(checkSame, roomMembersGames[i]);
-    //     }
-    // } else {
-    //     checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
-    // }
-
-    // console.log(checkSame);
-
     let sharedGameNames = [];
     let ownedByWho = [];
 
@@ -237,7 +251,6 @@ io.on("connection", (socket) => {
         games: sharedGameNames,
         owners: ownedByWho,
       });
-    // io.sockets.in("room-" + roomNumber).emit("finalList", {roomMembers: roomMembers, games: checkSame});
   });
 });
 
