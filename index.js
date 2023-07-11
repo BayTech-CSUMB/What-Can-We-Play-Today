@@ -43,6 +43,7 @@ app.use(express.static("public"));
 // Need this line to allow Express to parse values sent by POST forms
 app.use(express.urlencoded({ extended: true }));
 
+// TODO: Consolidate the two room structs (this & socketRooms) so we don't use extra memory.
 let existingRooms = [];
 
 // corresponds to page.com
@@ -168,9 +169,6 @@ app.post("/alt-login", async (req, res) => {
 });
 
 //Sockets used for members of the same room
-// let roomMembers = [];
-// let ids = [];
-
 function Room(roomNumber, roomMembers) {
   this.roomNumber = roomNumber;
   this.roomMembers = roomMembers;
@@ -182,46 +180,36 @@ io.on("connection", (socket) => {
   // Used to generate room with its members
   socket.on("message", (data) => {
     let roomNumber = data.roomNumber;
-    console.log(`Message Room Number: ${roomNumber}`);
     socket.join("room-" + roomNumber);
 
     let potentialRoom = socketRooms.find(x => x.roomNumber === roomNumber);
-    console.log(`BEFORE: ${potentialRoom}`);
-
+    // Using the variable above, we can check if there IS a room or not
     if (typeof potentialRoom != 'undefined') {
-        console.log(`FOUND`);
-        let arr = potentialRoom.roomMembers;
-        console.log(arr);
+        // DEBUG: Checking our Logic
+        console.log(`Found Room: ${roomNumber}`);
+        let foundMembers = potentialRoom.roomMembers;
         // IF the USER is ALREADY there DONT update
         let hasFound = false;
-        for (let i = 0; i < arr.length; i++) {
-            if (arr[i][0] == data.steamID) {
+        for (let i = 0; i < foundMembers.length; i++) {
+            if (foundMembers[i][0] == data.steamID) {
                 hasFound = true;
             }
         }
         
         if (hasFound == false) {
-            arr.push([data.steamID, data.username, data.avatar]);
-            potentialRoom.roomMembers = arr;
+            foundMembers.push([data.steamID, data.username, data.avatar]);
+            potentialRoom.roomMembers = foundMembers;
         }
     } else {
-        console.log(`NOT FOUND`);
-        // Made a temp array to store the first user (HOST)
-        // Added Host to Rooms
+        // DEBUG: Checking our Logic
+        console.log(`Room NOT Found: ${roomNumber}`);
+        // Made a temp array to store the first user (HOST) and add to the array keeping track of existing socket rooms.
         let temp = new Room(roomNumber, [[data.steamID, data.username, data.avatar]]);
         socketRooms.push(temp);
-        // ['12345', ['Y']]
     }
     
+    // Refind the room again and set the output of users to the front-end
     potentialRoom = socketRooms.find(x => x.roomNumber === roomNumber);
-    console.log(`AFTER:`);
-    console.log(potentialRoom);
-
-    // if (!ids.includes(data.steamID)) {
-    //   roomMembers.push(data);
-    //   ids.push(data.steamID);
-    // }
-
     roomMembers = potentialRoom.roomMembers;
 
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
@@ -236,17 +224,6 @@ io.on("connection", (socket) => {
   socket.on("generate", async (data) => {
     let roomNumber = data.roomNumber;
     let roomMembers = socketRooms.find(x => x.roomNumber === roomNumber).roomMembers;
-    // if (!ids.includes(data.steamID)) {
-    //   roomMembers.push(data);
-    //   ids.push(data.steamID);
-    // }
-
-    // ----- FUNCTIONS ------
-
-    function findSimilarGames(user1, user2) {
-      const result = user1.filter((x) => user2.indexOf(x) !== -1);
-      return result;
-    }
 
     // TODO: Start using objects to store all the relevant game data per game.
     // function Game(gameName, gameImage, gameLink) {

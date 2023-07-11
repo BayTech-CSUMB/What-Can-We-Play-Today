@@ -11,6 +11,8 @@
 <body onload="sendMessage()"></body>
 
 <script>
+    let hasReceivedGames = false;
+    
   const socket = io("<%= url %>");
 
   socket.on("connection");
@@ -22,7 +24,7 @@
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
     let roomNumber = Cookies.get("roomNumber");
-
+    
     socket.emit("generate", {
       steamID: steamID,
       username: username,
@@ -56,21 +58,23 @@
         return result;
       }
 
-      let textdiv = document.getElementById("toGrab");
-      let recDiv = document.querySelector("#recGames");
+      let suggestDiv = document.getElementById("toGrab");
+      let recommendDiv = document.querySelector("#recGames");
 
-      //   DEBUG: Output all NOT owned games
+    // This IF is a workaround to ensure we don't get DUPLICATE games in our list. 
+      if ((suggestDiv.childNodes.length === 0) && (recommendDiv.childNodes.length === 0)) {
       for (let i = 0; i < sharedGameNames.length; i++) {
         if (ownedByWho[i].length != roomMembers.length) {
           let users = convertToUser(invertOwners(ownedByWho[i]));
           // let users = invertOwners(ownedByWho[i]);
-          recDiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]} is NOT owned by ${users} </p>`;
+          recommendDiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]} is NOT owned by ${users} </p>`;
           // console.log(`${sharedGameNames[i]} is NOT owned by ${users}`);
         } else {
           // Case for ALL owned
-          textdiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]}</p>`;
+          suggestDiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]}</p>`;
         }
       }
+    }
     });
   };
 </script>

@@ -1,36 +1,15 @@
-<%- include('partials/header.ejs') %>
-<%- include('partials/navbar.ejs') %>
-<%- include('partials/tempNav.ejs') %>
+<%- include('partials/header.ejs') %> 
+<%- include('partials/navbar.ejs') %> 
+<%-include('partials/tempNav.ejs') %>
 
-<h1>
-   CREATE/JOIN ROOM PAGE
-</h1>
+<h1>CREATE/JOIN ROOM PAGE</h1>
 
+<form action="/room-choice" method="post">
+  <input type="hidden" name="role" value="Host" />
+  <button type="submit" style="margin: 5px">Create Room</button>
+</form>
 
-    <form action="/room-choice" method="post">
-        <input type="hidden" name="role" value="Host">
-        <button type = "submit" style = "margin: 5px;"> Create Room </button>
-        
-    </form>
-
-    <form action="/join-room" method="get">
-        <input type="hidden" name="role" value="Member">
-        <button type = "submit" style = "margin: 5px;"> Join Room </button>
-    </form>
-
-<!--
-<a href="/empty-room">
-    <button> TEMP JOIN ROOM </button>
-</a>
-
-<a href="/empty-room">
-<button id = "createBtn"> CREATE ROOM </button>
-</a>
-
-<script>
-    document.querySelector('#createBtn').addEventListener('click', function(){
-        let steamID = Cookies.get('steamID');
-        console.log("clicked by " + steamID);
-    });
-</script>
--->
+<form action="/join-room" method="get">
+  <input type="hidden" name="role" value="Member" />
+  <button type="submit" style="margin: 5px">Join Room</button>
+</form>
