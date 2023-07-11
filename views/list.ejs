@@ -1,18 +1,17 @@
-<%- include('partials/header.ejs') %> 
-<%- include('partials/navbar.ejs') %> 
-<%- include('partials/tempNav.ejs') %>
+<%- include('partials/header.ejs') %> <%- include('partials/navbar.ejs') %> <%-
+include('partials/tempNav.ejs') %>
 
 <div id="toGrab"></div>
 
-<hr/>
+<hr />
 
 <div id="recGames"></div>
 
 <body onload="sendMessage()"></body>
 
 <script>
-    let hasReceivedGames = false;
-    
+  let hasReceivedGames = false;
+
   const socket = io("<%= url %>");
 
   socket.on("connection");
@@ -24,18 +23,20 @@
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
     let roomNumber = Cookies.get("roomNumber");
-    
+
     socket.emit("generate", {
       steamID: steamID,
       username: username,
       avatar: avatar,
-      roomNumber: roomNumber
+      roomNumber: roomNumber,
     });
 
     socket.on("finalList", (data) => {
       let roomMembers = data.roomMembers;
       let sharedGameNames = data.games;
       let ownedByWho = data.owners;
+      let gameLinks = data.links;
+      let gameImages = data.images;
 
       function invertOwners(someArr) {
         let temp = [];
@@ -61,20 +62,31 @@
       let suggestDiv = document.getElementById("toGrab");
       let recommendDiv = document.querySelector("#recGames");
 
-    // This IF is a workaround to ensure we don't get DUPLICATE games in our list. 
-      if ((suggestDiv.childNodes.length === 0) && (recommendDiv.childNodes.length === 0)) {
-      for (let i = 0; i < sharedGameNames.length; i++) {
-        if (ownedByWho[i].length != roomMembers.length) {
-          let users = convertToUser(invertOwners(ownedByWho[i]));
-          // let users = invertOwners(ownedByWho[i]);
-          recommendDiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]} is NOT owned by ${users} </p>`;
-          // console.log(`${sharedGameNames[i]} is NOT owned by ${users}`);
-        } else {
-          // Case for ALL owned
-          suggestDiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]}</p>`;
+      // This IF is a workaround to ensure we don't get DUPLICATE games in our list.
+      if (
+        suggestDiv.childNodes.length === 0 &&
+        recommendDiv.childNodes.length === 0
+      ) {
+        for (let i = 0; i < sharedGameNames.length; i++) {
+            // IF the game is NOT owned by everyone, do the top case.
+          if (ownedByWho[i].length != roomMembers.length) {
+            let users = convertToUser(invertOwners(ownedByWho[i]));
+            // let users = invertOwners(ownedByWho[i]);
+            recommendDiv.innerHTML += `
+                <img src="${gameImages[i]}" alt="Logo for ${sharedGameNames[i]}">
+                <p style='color: white;'>
+                <a href='${gameLinks[i]}'>${sharedGameNames[i]}</a> is NOT owned by ${users} </p>`;
+            // recommendDiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]} is NOT owned by ${users} </p>`;
+            // console.log(`${sharedGameNames[i]} is NOT owned by ${users}`);
+          } else { // Case for EVERYONE in the room owns the game
+            suggestDiv.innerHTML += `
+                <img src="${gameImages[i]}" alt="Logo for ${sharedGameNames[i]}">
+                <p style='color: white;'>
+                <a href='${gameLinks[i]}'>${sharedGameNames[i]}</a>
+                </p>`;
+          }
         }
       }
-    }
     });
   };
 </script>
