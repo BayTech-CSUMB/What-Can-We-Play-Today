@@ -111,11 +111,11 @@ app.post("/room-choice", async (req, res) => {
     role: req.body.role,
     roomNumber: this.roomNumber,
     url: config.url,
-  }, 200);
+  }, 303);
 });
 
 app.get("/join-room", async (req, res) => {
-  res.render("join-room");
+  res.render("join-room", {existingRooms: existingRooms});
 }); 
 
 app.post("/join-room", (req, res) => {
@@ -130,9 +130,11 @@ app.post("/join-room", (req, res) => {
         res.render("empty-room", {roomNumber: potentialRoomNum, url: config.url});
     } else {
         console.log(`Room NOT FOUND`);
+        res.render("join-room", {existingRooms: existingRooms});
     }
 });
 
+// TODO: Ensure that regardless of the proper routing, that all pages validate and ensure they have the data they need (e.g. empty-room will redirect the users to create/join room if they DONT have a Room Number in their cookies).
 app.get("/empty-room", (req, res) => {
     // console.log(req.cookies);
   res.render("empty-room", {
@@ -149,7 +151,6 @@ app.post("/alt-login", async (req, res) => {
     const response = await axios.get(
       `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${config.steamKey}&steamids=${steamID}`
     );
-
     //const players = response.data && response.data.response && response.data.response.players;
     let user = response.data.response.players;
 
@@ -159,10 +160,7 @@ app.post("/alt-login", async (req, res) => {
     res.cookie("steamID", steamID);
     res.cookie("username", username);
     res.cookie("avatar", profileImg);
-    res.render("/room-choice", {
-      username: username,
-      steamID: steamID,
-    });
+    res.redirect(303, "room-choice");
   } catch {
     console.log("Could not fetch information...");
   }
@@ -225,34 +223,55 @@ io.on("connection", (socket) => {
     let roomNumber = data.roomNumber;
     let roomMembers = socketRooms.find(x => x.roomNumber === roomNumber).roomMembers;
 
-    // TODO: Start using objects to store all the relevant game data per game.
-    // function Game(gameName, gameImage, gameLink) {
-        // this.gameName = gameName;
-        // this.gameImage = gameImage;
-        // this.gameLink = gameLink;
-    // }
+    function Game(gameName, gameImage, gameLink) {
+        this.gameName = gameName;
+        this.gameImage = gameImage;
+        this.gameLink = gameLink;
+    }
 
     // We first start by gathering and generating all the games of each member
     // roomMembersGames will be a 2D array with each index being another array of all the games of that user.
-    // TODO: Here is where we could filter out games before they're added into each users array.
     let roomMembersGames = [];
+
     for (let i = 0; i < roomMembers.length; i++) {
       // Do our FETCH calls
       let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${roomMembers[i][0]}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
       let response = await fetch(url);
-      let result = await response.json();
+      let result = await response.json();      
       // Process results to two separate variables per user
       let allInfo = result.response.games;
       let gameCount = result.response.game_count;
+
       // Build the temporary sub-array to be pushed at the end.
-      let temp = [];
+      let tempUserGames = [];
+    // Run through each game for the relevant user and build their "libraries" to run through later.
+    // TODO: For efficiency sake, this essentially runs TWO major for-loops. One to build the data, and the second to process it. Can combine both into one to not waste computational space.
       for (let j = 0; j < gameCount; j++) {
-        temp.push(allInfo[j].name)
-        // TODO: Check if these are the right names in the API
-        // let tempGame = Game(allInfo[j].name, allInfo[j].image, allInfo[j].link);
-        // temp.push(tempGame);
+        // TODO: Here is where we could filter out games before they're added into each users array.
+        // 
+
+        let gameID = allInfo[j].appid;
+        let gameURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}`;
+
+        let gameResponse = await fetch(gameURL);
+        let gameResult = await gameResponse.json();
+        let gamePic = `http://media.steampowered.com/steamcommunity/public/images/apps/${gameID}/${allInfo[j].img_icon_url}.jpg`;
+        // try {
+        //     gamePic = gameResult[gameID].data.header_image;
+        //     // let gameLink = gameResult[`${gameID}`]['data'];
+        //     // let gameLink = gameResult[`${gameID}`].data;
+        //     // gamePic = gameLink.header_image;
+        // } catch (error) {
+        //     console.error(error);
+        // }
+        
+        let tempGame = new Game(allInfo[j].name, 
+            gamePic, 
+            `https://store.steampowered.com/app/${gameID}`);
+        tempUserGames.push(tempGame);
       };
-      roomMembersGames.push(temp);
+
+      roomMembersGames.push(tempUserGames);
     }
 
     let sharedGameNames = [];
@@ -260,24 +279,25 @@ io.on("connection", (socket) => {
     let gameImages = [];
     let gameLinks = [];
 
-    // Will iterate through EVERY game in ALL members libraries so could possibly take some time (does the operation in O(n+n...) time where each n is the size of another users library).
+    // Will iterate through EVERY game in ALL members libraries so could possibly take some time (does the operation in O(m+n...) time where each X is the size of another users library).
     for (let i = 0; i < roomMembersGames.length; i++) {
       for (let j = 0; j < roomMembersGames[i].length; j++) {
-        let curGame = roomMembersGames[i][j];
+        let currentGame = roomMembersGames[i][j];
+
         // Checking if the current game is in out checked list or not
-        let indexOfGame = sharedGameNames.indexOf(curGame);
-        // let indexOfGame = sharedGameNames.indexOf(curGame.gameName);
+        let indexOfGame = sharedGameNames.indexOf(currentGame.gameName);
         if (indexOfGame != -1) {
+            // It IS THERE so just append the SteamID to the "current owners"
           ownedByWho[indexOfGame].push(i);
         } else {
-          // it IS NOT there so make a new entry
-          sharedGameNames.push(curGame);
-        //   sharedGameNames.push(curGame.gameName);
+          // it IS NOT there so make a new entry with name, image, & link
+          sharedGameNames.push(currentGame.gameName);
+          gameImages.push(currentGame.gameImage);
+          gameLinks.push(currentGame.gameLink);
+            // Add the SteamID to a new array and start the appending process
           let temp = [];
           temp.push(i);
           ownedByWho.push(temp);
-        //   gameImages.push(curGame.gameImage);
-        //   gameLinks.push(curGame.gameLink);
         }
       }
     }
@@ -289,8 +309,8 @@ io.on("connection", (socket) => {
         roomMembers: roomMembers,
         games: sharedGameNames,
         owners: ownedByWho,
-        // images: gameImages,
-        // links: gameLinks,
+        images: gameImages,
+        links: gameLinks,
       });
   });
 });
