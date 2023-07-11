@@ -9,18 +9,16 @@
     <h1 class="room-number"> <%= roomNumber %> </h1>
     <div class="background-box">
         <h4 style="text-decoration: underline; color: #b1b1b1;"> MEMBERS </h4>
-        <!-- TODO: Unsure what these text fields were for. -->
-        <!-- <input type = "text" id = "steamID">  
-        <input type = "text" class = "message"> -->
 
         <body onload = "sendMessage()">
             <div id="toGen"></div>
             <br>
             <!-- TODO: Ensure the "Host" of the room (the first user) can only click Generate -->
-            <button id="newList"> Temp </button>
-            <a href = "/list">
+            <button id="newList"> Generate List </button>
+            <!-- TODO: Confirm we don't need this button -->
+            <!-- <a href = "/list">
                 <button> Generate List </button>
-            </a>
+            </a> -->
             <!-- TODO: Use proper CSS styling here instead of BRs -->
             <br>
             <!-- TODO: Make it so this copys something to your clipboard and then pops up a confirmation for the user that it did. -->
@@ -30,64 +28,46 @@
             <button style="background-color: #C75858"> Leave Room </button>
     </div>
         <script>
-            // window.onload = sendMessage();
-            // TODO: Remember the WAN IP when using LiveShare.
-            const socket = io('<%= url %>'); //config.url
-
-            // const socket = io('http://localhost:3000'); //config.url
+            // Setup our Socket connections
+            const socket = io('<%= url %>');
             socket.on('connection');
-            
-            socket.on('connection', () => {
-                let temp = [];
-                temp.push(Cookies.get('steamID'));
-                temp.push(Cookies.get('username'));
-                temp.push(Cookies.get('avatar'));
-                temp.push(Cookies.get('roomNumber'));
-                socket.emit('message', temp);
-            });
-            
-            //console.log(Cookies.get('steamID'));
+
+            // Fetches data from Cookies and send it to the back-end
             const sendMessage = () => {
-                //let temp = document.querySelector("#toGrab").textContent;
-                let temp = [];
-                
                 let steamID = Cookies.get('steamID');
                 let username = Cookies.get('username');
                 let avatar = Cookies.get('avatar');
-                socket.emit('message', {steamID: steamID, username: username, avatar: avatar});
-                // socket.emit('generate', {steamID: steamID, username: username, avatar: avatar});
-                // temp.push(Cookies.get('steamID'));
-                // temp.push(Cookies.get('username'));
-                // temp.push(Cookies.get('avatar'));
-                // socket.emit('message', temp);
+                let roomNumber = Cookies.get('roomNumber');
+                socket.emit('message', {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber});
             }
             
         socket.on('otherMsg', (data) => {
-        //document.querySelector('#toGrab').innerHTML = data;
+            console.log(data);
                 
-        //Setup the image div with the first user that joins
+        // Setup the image div with the first user that joins
         let divAppend = document.getElementById('toGen');
-        let current = `<img src = "${data[0].avatar}"">`;
+        let current = `<img src = "${data[0][2]}"">`;
         divAppend.innerHTML = current;
         
-        //Appends other users that join to the image div
-        for (let i = 1; i < data.length; i++){
-            let HTML = `<img src = "${data[i].avatar}"">`;
+        // Appends other users that join to the image div
+        for (let i = 1; i < data.length; i++) {
+            let HTML = `<img src = "${data[i][2]}"">`;
             current += HTML;
-            divAppend.innerHTML = current;
         }
+        divAppend.innerHTML = current;
     });
 
-    //Button used to dynamically reload page for all members
+    // Button used to dynamically reload page for all members
     let button = document.getElementById('newList');
-    button.addEventListener('click', function(){
+    button.addEventListener('click', function() {
         let steamID = Cookies.get('steamID');
         let username = Cookies.get('username');
         let avatar = Cookies.get('avatar');
-        socket.emit('newList', {steamID: steamID, username: username, avatar: avatar});
+        let roomNumber = Cookies.get('roomNumber');
+        socket.emit('newList', {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber});
     });
 
-    //redirects to list page
+    // redirects to list page
     socket.on('navigate', function() {
         window.location.href = "/list";
     })

@@ -1,0 +1,21 @@
+<%- include('partials/header.ejs') %> 
+<%- include('partials/navbar.ejs') %>
+<%- include('partials/tempNav.ejs') %>
+
+<form name="join" method="post" action="/join-room" onsubmit="return check()">
+    <br>
+    <input type="text" id="roomnum" name="roomnum">
+    <br>
+    <button type="submit">JOIN ROOM</button>
+</form>
+
+<script> 
+    function check(){
+        var roomnumber = document.forms["join"]["roomnum"].value;
+
+        if(roomnumber.length != 5){
+            alert("Please enter a valid room number!");
+            return false;
+        }
+    }
+</script>

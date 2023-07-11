@@ -41,7 +41,9 @@ app.set("view engine", "ejs");
 // Specify the Folder for Statics
 app.use(express.static("public"));
 // Need this line to allow Express to parse values sent by POST forms
-// app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
+
+let existingRooms = [];
 
 // corresponds to page.com
 app.get("/", (req, res) => {
@@ -86,35 +88,62 @@ app.get("/alt-login", (req, res) => {
 
 // Users get shown the CREATE or JOIN room buttons. Here they'll start the process of generating a Room Number and allowing others to join them.
 app.get("/room-choice", (req, res) => {
-  // const temp = localStorage.getItem("userID");
-  // console.log(temp);
-  //let steamID = Cookies.get('steamID');
-  //console.log(steamID + "created the room");
-
   res.render("room-choice");
 });
 
+//Passes host role
+app.post("/room-choice", async (req, res) => {
+  let roomNumber = Math.floor(Math.random()*90000) + 10000;
+  roomNumber = roomNumber.toString();
+    // Ensures that room numbers are random and unique so we don't have colliding room IDs.
+  while (existingRooms.includes(roomNumber)) {
+    roomNumber = Math.floor(Math.random()*90000) + 10000;
+    roomNumber = roomNumber.toString();
+  }
+
+// Add our now guaranteed unique room to the existing rooms & also add the number to the users cookies.
+  existingRooms.push(roomNumber);
+  res.cookie("roomNumber", roomNumber);
+
+// Render the next page for the Host now with the number on their page.
+  res.redirect("empty-room", {
+    role: req.body.role,
+    roomNumber: this.roomNumber,
+    url: config.url,
+  }, 200);
+});
+
+app.get("/join-room", async (req, res) => {
+  res.render("join-room");
+}); 
+
+app.post("/join-room", (req, res) => {
+    let potentialRoomNum = req.body.roomnum;
+    // console.log(`${potentialRoomNum}`);
+    console.log(existingRooms);
+    // IF ELSE 
+    console.log(existingRooms.includes(potentialRoomNum));
+    if (existingRooms.includes(potentialRoomNum)) {
+        console.log(`Room FOUND`);
+        res.cookie("roomNumber", potentialRoomNum);
+        res.render("empty-room", {roomNumber: potentialRoomNum, url: config.url});
+    } else {
+        console.log(`Room NOT FOUND`);
+    }
+});
+
 app.get("/empty-room", (req, res) => {
-  let roomNumber = `89641`;
+    // console.log(req.cookies);
   res.render("empty-room", {
-    roomNumber: roomNumber,
+    roomNumber: req.cookies.roomNumber,
     url: config.url,
   });
 });
 
-app.post("/room-choice", async (req, res) => {
-  let roomNumber = `89641`;
-  res.render("empty-room", {
-    role: req.body.role,
-    roomNumber: roomNumber,
-    url: config.url,
-  });
-});
 //Used for alt login
 app.post("/alt-login", async (req, res) => {
   try {
     let steamID = req.body.userId;
-    let roomNumber = "89641";
     console.log("Getting user information...");
     const response = await axios.get(
       `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${config.steamKey}&steamids=${steamID}`
@@ -129,11 +158,9 @@ app.post("/alt-login", async (req, res) => {
     res.cookie("steamID", steamID);
     res.cookie("username", username);
     res.cookie("avatar", profileImg);
-    res.cookie("roomNumber", roomNumber);
-    res.render("room-choice", {
+    res.render("/room-choice", {
       username: username,
       steamID: steamID,
-      roomNumber: roomNumber,
     });
   } catch {
     console.log("Could not fetch information...");
@@ -141,19 +168,62 @@ app.post("/alt-login", async (req, res) => {
 });
 
 //Sockets used for members of the same room
-let roomMembers = [];
-let ids = [];
+// let roomMembers = [];
+// let ids = [];
+
+function Room(roomNumber, roomMembers) {
+  this.roomNumber = roomNumber;
+  this.roomMembers = roomMembers;
+}
+let socketRooms = [];
+
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
-  const roomNumber = `89641`;
-
-  //Used to generate room with its members
+  // Used to generate room with its members
   socket.on("message", (data) => {
-    if (!ids.includes(data.steamID)) {
-      roomMembers.push(data);
-      ids.push(data.steamID);
-    }
+    let roomNumber = data.roomNumber;
+    console.log(`Message Room Number: ${roomNumber}`);
     socket.join("room-" + roomNumber);
+
+    let potentialRoom = socketRooms.find(x => x.roomNumber === roomNumber);
+    console.log(`BEFORE: ${potentialRoom}`);
+
+    if (typeof potentialRoom != 'undefined') {
+        console.log(`FOUND`);
+        let arr = potentialRoom.roomMembers;
+        console.log(arr);
+        // IF the USER is ALREADY there DONT update
+        let hasFound = false;
+        for (let i = 0; i < arr.length; i++) {
+            if (arr[i][0] == data.steamID) {
+                hasFound = true;
+            }
+        }
+        
+        if (hasFound == false) {
+            arr.push([data.steamID, data.username, data.avatar]);
+            potentialRoom.roomMembers = arr;
+        }
+    } else {
+        console.log(`NOT FOUND`);
+        // Made a temp array to store the first user (HOST)
+        // Added Host to Rooms
+        let temp = new Room(roomNumber, [[data.steamID, data.username, data.avatar]]);
+        socketRooms.push(temp);
+        // ['12345', ['Y']]
+    }
+    
+    potentialRoom = socketRooms.find(x => x.roomNumber === roomNumber);
+    console.log(`AFTER:`);
+    console.log(potentialRoom);
+
+    // if (!ids.includes(data.steamID)) {
+    //   roomMembers.push(data);
+    //   ids.push(data.steamID);
+    // }
+
+    roomMembers = potentialRoom.roomMembers;
+
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
   });
 
@@ -164,10 +234,12 @@ io.on("connection", (socket) => {
   // MAIN WORKHORSE FUNCTION. Gathers the SteamIDs of the room members and uses them to generate the massive list of shared games.
   // Sort by amount of time played and then generate shared list
   socket.on("generate", async (data) => {
-    if (!ids.includes(data.steamID)) {
-      roomMembers.push(data);
-      ids.push(data.steamID);
-    }
+    let roomNumber = data.roomNumber;
+    let roomMembers = socketRooms.find(x => x.roomNumber === roomNumber).roomMembers;
+    // if (!ids.includes(data.steamID)) {
+    //   roomMembers.push(data);
+    //   ids.push(data.steamID);
+    // }
 
     // ----- FUNCTIONS ------
 
@@ -176,13 +248,20 @@ io.on("connection", (socket) => {
       return result;
     }
 
+    // TODO: Start using objects to store all the relevant game data per game.
+    // function Game(gameName, gameImage, gameLink) {
+        // this.gameName = gameName;
+        // this.gameImage = gameImage;
+        // this.gameLink = gameLink;
+    // }
+
     // We first start by gathering and generating all the games of each member
     // roomMembersGames will be a 2D array with each index being another array of all the games of that user.
     // TODO: Here is where we could filter out games before they're added into each users array.
     let roomMembersGames = [];
     for (let i = 0; i < roomMembers.length; i++) {
       // Do our FETCH calls
-      let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${roomMembers[i].steamID}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
+      let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${roomMembers[i][0]}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
       let response = await fetch(url);
       let result = await response.json();
       // Process results to two separate variables per user
@@ -190,26 +269,19 @@ io.on("connection", (socket) => {
       let gameCount = result.response.game_count;
       // Build the temporary sub-array to be pushed at the end.
       let temp = [];
-      for (let j = 0; j < gameCount; j++) temp.push(allInfo[j].name);
+      for (let j = 0; j < gameCount; j++) {
+        temp.push(allInfo[j].name)
+        // TODO: Check if these are the right names in the API
+        // let tempGame = Game(allInfo[j].name, allInfo[j].image, allInfo[j].link);
+        // temp.push(tempGame);
+      };
       roomMembersGames.push(temp);
     }
 
-    // TODO: Delete this after consolidating the payload generation.
-    // let checkSame = [];
-    // // DOES NOT HANDLE A SOLO MEMBER.
-    // if (roomMembers.length > 2) {
-    //     checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
-    //     for (let i = 2; i < roomMembers.length; i++) {
-    //         checkSame = findSimilarGames(checkSame, roomMembersGames[i]);
-    //     }
-    // } else {
-    //     checkSame = findSimilarGames(roomMembersGames[0], roomMembersGames[1]);
-    // }
-
-    // console.log(checkSame);
-
     let sharedGameNames = [];
     let ownedByWho = [];
+    let gameImages = [];
+    let gameLinks = [];
 
     // Will iterate through EVERY game in ALL members libraries so could possibly take some time (does the operation in O(n+n...) time where each n is the size of another users library).
     for (let i = 0; i < roomMembersGames.length; i++) {
@@ -217,14 +289,18 @@ io.on("connection", (socket) => {
         let curGame = roomMembersGames[i][j];
         // Checking if the current game is in out checked list or not
         let indexOfGame = sharedGameNames.indexOf(curGame);
+        // let indexOfGame = sharedGameNames.indexOf(curGame.gameName);
         if (indexOfGame != -1) {
           ownedByWho[indexOfGame].push(i);
         } else {
           // it IS NOT there so make a new entry
           sharedGameNames.push(curGame);
+        //   sharedGameNames.push(curGame.gameName);
           let temp = [];
           temp.push(i);
           ownedByWho.push(temp);
+        //   gameImages.push(curGame.gameImage);
+        //   gameLinks.push(curGame.gameLink);
         }
       }
     }
@@ -236,8 +312,9 @@ io.on("connection", (socket) => {
         roomMembers: roomMembers,
         games: sharedGameNames,
         owners: ownedByWho,
+        // images: gameImages,
+        // links: gameLinks,
       });
-    // io.sockets.in("room-" + roomNumber).emit("finalList", {roomMembers: roomMembers, games: checkSame});
   });
 });
 

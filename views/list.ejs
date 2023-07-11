@@ -1,16 +1,17 @@
-<%- include('partials/header.ejs') %> <%- include('partials/navbar.ejs') %> <%-
-include('partials/tempNav.ejs') %>
+<%- include('partials/header.ejs') %> 
+<%- include('partials/navbar.ejs') %> 
+<%- include('partials/tempNav.ejs') %>
 
 <div id="toGrab"></div>
 
-<hr />
+<hr/>
 
 <div id="recGames"></div>
 
 <body onload="sendMessage()"></body>
 
 <script>
-  const socket = io("<%= url %>"); //config.url
+  const socket = io("<%= url %>");
 
   socket.on("connection");
 
@@ -20,11 +21,13 @@ include('partials/tempNav.ejs') %>
     let steamID = Cookies.get("steamID");
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
+    let roomNumber = Cookies.get("roomNumber");
 
     socket.emit("generate", {
       steamID: steamID,
       username: username,
       avatar: avatar,
+      roomNumber: roomNumber
     });
 
     socket.on("finalList", (data) => {
@@ -43,7 +46,7 @@ include('partials/tempNav.ejs') %>
       function convertToUser(someArr) {
         let temp = ``;
         for (let i = 0; i < someArr.length; i++) {
-          temp += `${roomMembers[someArr[i]].username} `;
+          temp += `${roomMembers[someArr[i]][1]} `;
         }
         return temp;
       }
@@ -53,16 +56,8 @@ include('partials/tempNav.ejs') %>
         return result;
       }
 
-      // console.log(data);
-      //   let gamesList = data.games;
-      //   console.log(gamesList);
-
       let textdiv = document.getElementById("toGrab");
       let recDiv = document.querySelector("#recGames");
-
-      //   for (let i = 0; i < data.games.length; i++) {
-      //     textdiv.innerHTML += `<p style='color: white;'>${gamesList[i]}</p>`;
-      //   }
 
       //   DEBUG: Output all NOT owned games
       for (let i = 0; i < sharedGameNames.length; i++) {
