@@ -46,7 +46,7 @@
       function convertToUser(someArr) {
         let temp = ``;
         for (let i = 0; i < someArr.length; i++) {
-          temp += `${roomMembers[someArr[i]].username} `;
+          temp += `${roomMembers[someArr[i]][1]} `;
         }
         return temp;
       }

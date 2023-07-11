@@ -42,18 +42,19 @@
             }
             
         socket.on('otherMsg', (data) => {
+            console.log(data);
                 
         // Setup the image div with the first user that joins
         let divAppend = document.getElementById('toGen');
-        let current = `<img src = "${data[0].avatar}"">`;
+        let current = `<img src = "${data[0][2]}"">`;
         divAppend.innerHTML = current;
         
         // Appends other users that join to the image div
         for (let i = 1; i < data.length; i++) {
-            let HTML = `<img src = "${data[i].avatar}"">`;
+            let HTML = `<img src = "${data[i][2]}"">`;
             current += HTML;
-            divAppend.innerHTML = current;
         }
+        divAppend.innerHTML = current;
     });
 
     // Button used to dynamically reload page for all members
