@@ -6,7 +6,7 @@
 <div class="gradient-background">
     <h1 class="room-title"> ROOM CODE </h1>
     <!-- TODO: Ask for which underline. 1 vote for "Controller" -->
-    <h1 class="room-number"> <%= roomNumber %> </h1>
+    <h1 id = "roomNumber" class="room-number"> <%= roomNumber %> </h1>
     <div class="background-box">
         <h4 style="text-decoration: underline; color: #b1b1b1;"> MEMBERS </h4>
 
@@ -18,7 +18,7 @@
             <!-- TODO: Use proper CSS styling here instead of BRs -->
             <br>
             <!-- TODO: Make it so this copys something to your clipboard and then pops up a confirmation for the user that it did. -->
-            <button> Copy Room Link </button>
+            <button onclick = "copyFunction()"> Copy Room Link </button>
             <br>
             <!-- TODO: Make this actually do something -->
             <button style="background-color: #C75858"> Leave Room </button>
@@ -67,5 +67,15 @@
     socket.on('navigate', function() {
         window.location.href = "/list";
     })
+
+    function copyFunction(){
+        var copyRoomNum = document.getElementById('roomNumber').innerHTML;
+        console.log("ROOM : " + copyRoomNum);
+
+        navigator.clipboard.writeText(copyRoomNum);
+        // alert("Copied the text: " + copyRoomNum);
+
+    }
+
 </script>
 </div>
