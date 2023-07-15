@@ -18,7 +18,7 @@
             <!-- TODO: Use proper CSS styling here instead of BRs -->
             <br>
             <!-- TODO: Make it so this copys something to your clipboard and then pops up a confirmation for the user that it did. -->
-            <button onclick = "copyFunction()"> Copy Room Link </button>
+            <button onclick = "showSuccess();copyFunction()"> Copy Room Link </button>
             <br>
             <!-- TODO: Make this actually do something -->
             <button style="background-color: #C75858"> Leave Room </button>
@@ -66,16 +66,30 @@
     // redirects to list page
     socket.on('navigate', function() {
         window.location.href = "/list";
-    })
+    });
 
-    function copyFunction(){
-        var copyRoomNum = document.getElementById('roomNumber').innerHTML;
-        console.log("ROOM : " + copyRoomNum);
+        function copyFunction(){
+        let copyRoomNum = document.getElementById('roomNumber');
+        var selection = window.getSelection();
+        var range = document.createRange();
 
-        navigator.clipboard.writeText(copyRoomNum);
-        // alert("Copied the text: " + copyRoomNum);
+        range.selectNodeContents(copyRoomNum);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        document.execCommand('copy');
 
+        
     }
+
+    function showSuccess(){
+            jSuites.notification({
+                name: 'Copied to Clipboard',
+                // message: 'successs',
+            })
+    }
+    
+
 
 </script>
 </div>
