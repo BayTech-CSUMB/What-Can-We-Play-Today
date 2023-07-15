@@ -12,6 +12,9 @@ const server = require("http").createServer(app);
 const io = require("socket.io")(server, { cors: { origin: "*" } });
 // Ensure API Keys and Confidential Data don't get published to Github
 const config = require("./private/keys.json");
+// Setting up a helper Wrapper library to make the Steam API much easier to use
+const steamWrapper = require('steam-js-api');
+steamWrapper.setKey(config.steamKey);
 
 // Necessary for Steam Oauth
 const SteamAuth = require("node-steam-openid");
@@ -33,7 +36,7 @@ app.use(
     saveUninitialized: true,
   }),
   bodyParser.urlencoded({ extended: true }),
-  bodyParser.json()
+  bodyParser.json({extended: true})
 );
 
 // Tell Express which Templating Engine we're using
@@ -120,10 +123,9 @@ app.get("/join-room", async (req, res) => {
 
 app.post("/join-room", (req, res) => {
     let potentialRoomNum = req.body.roomnum;
+    // DEBUG: Check the incoming data and the struct it's being compared to
     // console.log(`${potentialRoomNum}`);
-    console.log(existingRooms);
-    // IF ELSE 
-    console.log(existingRooms.includes(potentialRoomNum));
+    // console.log(existingRooms);
     if (existingRooms.includes(potentialRoomNum)) {
         console.log(`Room FOUND`);
         res.cookie("roomNumber", potentialRoomNum);
@@ -214,7 +216,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("newList", (data) => {
-    io.emit("navigate");
+    socket.join("room-" + data.roomNumber);
+    io.sockets.in("room-" + data.roomNumber).emit("navigate");
   });
 
   // MAIN WORKHORSE FUNCTION. Gathers the SteamIDs of the room members and uses them to generate the massive list of shared games.
@@ -233,44 +236,35 @@ io.on("connection", (socket) => {
     // roomMembersGames will be a 2D array with each index being another array of all the games of that user.
     let roomMembersGames = [];
 
+    // TODO: For efficiency sake, this essentially runs TWO major for-loops. One to build the data, and the second to process it. Can combine both into one to not waste computational space.
+
     for (let i = 0; i < roomMembers.length; i++) {
-      // Do our FETCH calls
-      let url = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${config.steamKey}&steamid=${roomMembers[i][0]}&include_appinfo=true&include_played_free_games=true&appids_filter=1`;
-      let response = await fetch(url);
-      let result = await response.json();      
-      // Process results to two separate variables per user
-      let allInfo = result.response.games;
-      let gameCount = result.response.game_count;
+
+        let allInfo = [];
+        let gameCount = 0;
+    
+        let curMembersID = roomMembers[i][0];
+
+        await steamWrapper.getOwnedGames(curMembersID, null, true).then(result => {
+            gameCount = result.data.count;
+            allInfo = result.data.games;
+        }).catch(console.error);
 
       // Build the temporary sub-array to be pushed at the end.
       let tempUserGames = [];
     // Run through each game for the relevant user and build their "libraries" to run through later.
-    // TODO: For efficiency sake, this essentially runs TWO major for-loops. One to build the data, and the second to process it. Can combine both into one to not waste computational space.
       for (let j = 0; j < gameCount; j++) {
         // TODO: Here is where we could filter out games before they're added into each users array.
-        // 
 
-        let gameID = allInfo[j].appid;
-        let gameURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}`;
+        let gameID = allInfo[j].appID;
 
-        let gameResponse = await fetch(gameURL);
-        let gameResult = await gameResponse.json();
-        let gamePic = `http://media.steampowered.com/steamcommunity/public/images/apps/${gameID}/${allInfo[j].img_icon_url}.jpg`;
-        // try {
-        //     gamePic = gameResult[gameID].data.header_image;
-        //     // let gameLink = gameResult[`${gameID}`]['data'];
-        //     // let gameLink = gameResult[`${gameID}`].data;
-        //     // gamePic = gameLink.header_image;
-        // } catch (error) {
-        //     console.error(error);
-        // }
+        let gamePic = allInfo[j].url_store_header;
         
         let tempGame = new Game(allInfo[j].name, 
             gamePic, 
-            `https://store.steampowered.com/app/${gameID}`);
+            allInfo[j].url_store);
         tempUserGames.push(tempGame);
       };
-
       roomMembersGames.push(tempUserGames);
     }
 
@@ -317,6 +311,11 @@ io.on("connection", (socket) => {
 
 app.get("/list", async (req, res) => {
   res.render("list", { url: config.url });
+});
+
+// DEBUG: For checking HTML elements on a safe page.
+app.get("/test", async (req, res) => {
+  res.render("test");
 });
 
 server.listen(3000, () => {

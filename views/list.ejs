@@ -1,13 +1,15 @@
-<%- include('partials/header.ejs') %> <%- include('partials/navbar.ejs') %> <%-
-include('partials/tempNav.ejs') %>
+<%- include('partials/header.ejs') %> 
+<%- include('partials/navbar.ejs') %> 
+<%- include('partials/tempNav.ejs') %>
 
-<div id="toGrab"></div>
 
-<hr />
-
-<div id="recGames"></div>
-
-<body onload="sendMessage()"></body>
+<body onload="sendMessage()">
+    <div class="gradient-background">
+        <div id="toGrab"></div>
+        <hr />
+        <div id="recGames"></div>
+    </div>
+</body>
 
 <script>
   let hasReceivedGames = false;
@@ -73,17 +75,31 @@ include('partials/tempNav.ejs') %>
             let users = convertToUser(invertOwners(ownedByWho[i]));
             // let users = invertOwners(ownedByWho[i]);
             recommendDiv.innerHTML += `
-                <img src="${gameImages[i]}" alt="Logo for ${sharedGameNames[i]}">
-                <p style='color: white;'>
-                <a href='${gameLinks[i]}'>${sharedGameNames[i]}</a> is NOT owned by ${users} </p>`;
-            // recommendDiv.innerHTML += `<p style='color: white;'>${sharedGameNames[i]} is NOT owned by ${users} </p>`;
-            // console.log(`${sharedGameNames[i]} is NOT owned by ${users}`);
+                <div class="gameItem">
+                    <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
+                    <div class="seperator">
+                        <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
+                        <p class="gameTag"> Multiplayer </p>
+                    </div>
+                </div>
+            `;
+            // <img src="${gameImages[i]}" alt="Logo for ${sharedGameNames[i]}">
+            // <p style='color: white;'>
+            // <a href='${gameLinks[i]}'>${sharedGameNames[i]}</a> is NOT owned by ${users} </p>
           } else { // Case for EVERYONE in the room owns the game
             suggestDiv.innerHTML += `
-                <img src="${gameImages[i]}" alt="Logo for ${sharedGameNames[i]}">
-                <p style='color: white;'>
-                <a href='${gameLinks[i]}'>${sharedGameNames[i]}</a>
-                </p>`;
+                <div class="gameItem">
+                    <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
+                    <div class="seperator">
+                        <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
+                        <p class="gameTag"> Multiplayer </p>
+                    </div>
+                </div>
+                `;
+            // `<img src="${gameImages[i]}" alt="Logo for ${sharedGameNames[i]}">
+            //     <p style='color: white;'>
+            //     <a href='${gameLinks[i]}'>${sharedGameNames[i]}</a>
+            //     </p>`;
           }
         }
       }

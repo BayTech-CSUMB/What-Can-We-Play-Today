@@ -55,6 +55,56 @@ button:hover {
     padding: 20vh;
 }
 
+/*  */
+#toGrab, #recGames {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.gameTitle {
+    color: white;
+    font-family: 'Kanit', sans-serif;
+    font-size: larger;
+}
+
+.gameTag {
+    margin-top: 3.5vh;
+    color: white;
+    align-self: flex-end;
+    border: 2px solid white;
+    border-radius: 10px;
+    padding: 4px;
+}
+
+.seperator {
+    display: flex;
+    flex-direction: column;
+    margin-left: 1rem;
+    margin-top: 1rem;
+}
+
+.gameItem {
+    margin: 1.5rem;
+    display: flex;
+    flex-direction: row;
+    background-color: #171A21;
+    width: 55vw;
+    /* Key for Lift Off effect */
+    transition: all .3s ease-in-out;
+}
+
+.gameItem:hover {
+    /* the 3D transform here is key to the effect */
+    transform: translate3d(0px, -1px, 0px);
+    /* this stronger shadow sells that the card is being lifted up */
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+}
+
+.gameImage {
+    max-height: 15vh;
+}
+
 .gradient-background {
     background-image: linear-gradient(90deg,
         rgba(0,0,0,0) 10%,
