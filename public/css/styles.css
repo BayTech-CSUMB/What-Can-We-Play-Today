@@ -107,6 +107,29 @@ button:hover {
     max-height: 15vh;
 }
 
+.gameMemberText {
+    font-family: 'Kanit', sans-serif;
+    color: #B1B1B1;
+    text-decoration: underline;
+}
+
+.roomMembers {
+    display: flex;
+    flex-direction: column;
+    margin-top: 1vh;
+    margin-left: auto;
+    margin-right: 1vw;
+}
+
+.roomMemberImages {
+
+}
+
+.userIconInList {
+    max-height: 7vh;
+    align-self: center;
+}
+
 .gradient-background {
     background-image: linear-gradient(90deg,
         rgba(0,0,0,0) 10%,

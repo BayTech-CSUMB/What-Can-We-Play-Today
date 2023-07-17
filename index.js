@@ -304,6 +304,15 @@ app.get("/test", async (req, res) => {
   res.render("test");
 });
 
+app.get("/logout", (req, res) => {
+  res.clearCookie('steamID');
+  res.clearCookie('username');
+  res.clearCookie('avatar');
+  res.clearCookie('roomNumber');
+  
+  res.render('index');
+});
+
 server.listen(3000, () => {
   console.log(`SocketIO Server has Started!`);
 });
