@@ -2,25 +2,24 @@
 <%- include('partials/navbar.ejs') %> 
 <%- include('partials/tempNav.ejs') %>
 
-
+<button id= "leave" style="background-color: red;">LEAVE ROOM</button>
 <body onload="sendMessage()">
     <div class="gradient-background">
         <div id="toGrab"></div>
         <hr />
         <div id="recGames"></div>
+        <!-- TODO: Put Room Members to the side of games -->
+        <!-- <div id="roomMembers">
+            <h6> MEMBERS </h6>
+        </div> -->
     </div>
 </body>
 
 <script>
-  let hasReceivedGames = false;
-
   const socket = io("<%= url %>");
-
   socket.on("connection");
 
   const sendMessage = () => {
-    let temp = [];
-
     let steamID = Cookies.get("steamID");
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
@@ -40,6 +39,10 @@
       let gameLinks = data.links;
       let gameImages = data.images;
 
+    //   console.log(roomMembers);
+    //   console.log(`Owned By Front-end: ${ownedByWho[0]}`);
+        console.log(ownedByWho);
+
       function invertOwners(someArr) {
         let temp = [];
         for (let i = 0; i < roomMembers.length; i++) {
@@ -51,6 +54,7 @@
       function convertToUser(someArr) {
         let temp = ``;
         for (let i = 0; i < someArr.length; i++) {
+          temp += `<img class="userIconInList" src="${roomMembers[someArr[i]][1]}" alt="Icon for ${roomMembers[someArr[i]][1]}">`;
           temp += `${roomMembers[someArr[i]][1]} `;
         }
         return temp;
@@ -73,7 +77,6 @@
             // IF the game is NOT owned by everyone, do the top case.
           if (ownedByWho[i].length != roomMembers.length) {
             let users = convertToUser(invertOwners(ownedByWho[i]));
-            // let users = invertOwners(ownedByWho[i]);
             recommendDiv.innerHTML += `
                 <div class="gameItem">
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
@@ -81,11 +84,14 @@
                         <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
                         <p class="gameTag"> Multiplayer </p>
                     </div>
+                    <div class="roomMembers">
+                        <p class="gameMemberText"> NOT OWNED BY </>
+                        <div class="roomMemberImages">
+                            ${users}    
+                        </div>
+                    </div>
                 </div>
             `;
-            // <img src="${gameImages[i]}" alt="Logo for ${sharedGameNames[i]}">
-            // <p style='color: white;'>
-            // <a href='${gameLinks[i]}'>${sharedGameNames[i]}</a> is NOT owned by ${users} </p>
           } else { // Case for EVERYONE in the room owns the game
             suggestDiv.innerHTML += `
                 <div class="gameItem">
@@ -96,13 +102,14 @@
                     </div>
                 </div>
                 `;
-            // `<img src="${gameImages[i]}" alt="Logo for ${sharedGameNames[i]}">
-            //     <p style='color: white;'>
-            //     <a href='${gameLinks[i]}'>${sharedGameNames[i]}</a>
-            //     </p>`;
           }
         }
       }
     });
   };
+
+  let leave = document.getElementById("leave");
+  leave.addEventListener('click', function(){
+    window.location.href = "/logout";
+  })
 </script>

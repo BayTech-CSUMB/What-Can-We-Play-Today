@@ -69,12 +69,14 @@ button:hover {
 }
 
 .gameTag {
+    background-color: #243C4F;
+    font-family: 'Kanit', sans-serif;
     margin-top: 3.5vh;
-    color: white;
-    align-self: flex-end;
-    border: 2px solid white;
-    border-radius: 10px;
-    padding: 4px;
+    letter-spacing: 0.75px;
+    color: #82D3FF;
+    align-self: flex-start;
+    border-radius: 6px;
+    padding: 8px;
 }
 
 .seperator {
@@ -103,6 +105,29 @@ button:hover {
 
 .gameImage {
     max-height: 15vh;
+}
+
+.gameMemberText {
+    font-family: 'Kanit', sans-serif;
+    color: #B1B1B1;
+    text-decoration: underline;
+}
+
+.roomMembers {
+    display: flex;
+    flex-direction: column;
+    margin-top: 1vh;
+    margin-left: auto;
+    margin-right: 1vw;
+}
+
+.roomMemberImages {
+
+}
+
+.userIconInList {
+    max-height: 7vh;
+    align-self: center;
 }
 
 .gradient-background {
