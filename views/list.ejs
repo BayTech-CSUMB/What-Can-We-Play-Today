@@ -1,6 +1,5 @@
 <%- include('partials/header.ejs') %> 
-<%- include('partials/navbar.ejs') %> 
-<%- include('partials/tempNav.ejs') %>
+<%- include('partials/navbar.ejs') %>
 
 <button id= "leave" style="background-color: red;">LEAVE ROOM</button>
 <body onload="sendMessage()">
@@ -54,8 +53,7 @@
       function convertToUser(someArr) {
         let temp = ``;
         for (let i = 0; i < someArr.length; i++) {
-          temp += `<img class="userIconInList" src="${roomMembers[someArr[i]][1]}" alt="Icon for ${roomMembers[someArr[i]][1]}">`;
-          temp += `${roomMembers[someArr[i]][1]} `;
+          temp += `<img class="userIconInList" src="${roomMembers[someArr[i]][2]}" alt="Icon for ${roomMembers[someArr[i]][1]}">`;
         }
         return temp;
       }
