@@ -29,6 +29,7 @@ const steam = new SteamAuth({
 // Setup for keeping track of Users temporary data.
 const session = require("express-session");
 const { types } = require("util");
+const { parse } = require("path");
 app.use(
   session({
     secret: config.sessionSecret,
@@ -45,6 +46,17 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 // Need this line to allow Express to parse values sent by POST forms
 app.use(express.urlencoded({ extended: true }));
+
+// Setup and Connect a SQLite3 Database for Room/User data storage.
+const sqlite3 = require("sqlite3").verbose();
+let databaseFilePath = `./private/games.db`;
+let database = new sqlite3.Database(
+  databaseFilePath,
+  sqlite3.OPEN_READWRITE,
+  (_) => {
+    console.log("Connected to database!");
+  }
+);
 
 // TODO: Consolidate the two room structs (this & socketRooms) so we don't use extra memory.
 let existingRooms = [];
@@ -238,9 +250,9 @@ io.on("connection", (socket) => {
     let ownedByWho = [];
     let gameImages = [];
     let gameLinks = [];
-    // let gameTags = []; // TODO: Add Tag functionality
+    let gameTags = []; // TODO: Add Tag functionality
 
-    // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what. 
+    // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
       // A users total game count & an array of their games. For iterating & that'll be set later.
       let gameInfo = [];
@@ -262,25 +274,103 @@ io.on("connection", (socket) => {
         const gameName = gameInfo[curGame].name;
         const gamePic = gameInfo[curGame].url_store_header;
         const gameURL = gameInfo[curGame].url_store;
+        const gameID = gameInfo[curGame].appID;
+        let tags = ``;
+        let final_price = `Free`;
+        let initial_price = `Free`;
 
         // TODO: Here is where we could filter out games before they're added into each users array.
 
-        // Checking if the current game is in out checked list or not
-        const indexOfGame = sharedGameNames.indexOf(gameName);
-        // TODO: Would it be better to use a games ID here? Can a game have the same name as another?
-        if (indexOfGame != -1) {
-          // It IS THERE so curGame append the SteamID to the "current owners"
-          ownedByWho[indexOfGame].push(i);
-        } else {
-          // it IS NOT there so make a new entry with name, image, & link
-          sharedGameNames.push(gameName);
-          gameImages.push(gamePic);
-          gameLinks.push(gameURL);
-          // Add the SteamID to a new array and start the appending process
-          let temp = [];
-          temp.push(i);
-          ownedByWho.push(temp);
-        }
+        // FIRST we query our database to see if we HAVE the game there or not
+        database.get(
+          `SELECT * FROM Games WHERE gameID = ?`,
+          gameID,
+          async function (err, row) {
+            if (err) return console.error(err.message);
+            // Checking the result of our Query
+            if (row) {
+              // Game WAS found so we either retrieve the data OR if the data is past expiration we'll re-query it.
+              
+                // if ("game is a singleplayer game (check database col)") {
+                //     // ignore the game entirely
+                // } else if ("the game is past expiration") {
+                //     // "re-fetch the data and update the query"
+                // } else {
+                //     // data is good so query from database & set all the variables to the result
+                // }
+                // TODO: In the case of a user with a large/niche library surpassing 200 calls we'll have to set things to null and then re-query possibly.
+            } else {
+              // Game was NOT found so we'll have to add it.
+
+              function parseTags(inputTags) {
+                return Object.keys(inputTags).join(",");
+              }
+
+              // First SteamSPY's API for the detailed tags of a game.
+              const url = `https://steamspy.com/api.php?request=appdetails&appid=${gameID}`;
+              const response = await fetch(url);
+              const result = await response.json();
+              tags = parseTags(result.tags);
+
+              // Then Steam's API for majority of the data. From this we want the "categories" and pricing of each game.
+              const steamURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}&l=en`;
+              const response2 = await fetch(steamURL);
+              const result2 = await response2.json();
+
+              // Getting the price of the games
+              let priceOverview = result2[`${gameID}`].data.price_overview;
+              if (!result2[`${gameID}`].data.is_free) {
+                final_price = priceOverview.final_formatted; // final
+                initial_price = priceOverview.initial_formatted; // initial
+              }
+              // Getting the "categories" of the game
+              let descriptions = result2[`${gameID}`].data.categories.map(
+                (category) => category.description
+              );
+              let genre = descriptions.join();
+
+              // Age is self made independent of the APIs and meant to catalog the age of the record so if it passes a certain range it'll be re-queried.
+              let age = `2023-07-20`;
+
+              // Inserting into the database if it's not there
+              database.run(
+                `INSERT INTO Games (gameID, name, genre, tags, age, price, initial_price) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  gameID,
+                  gameName,
+                  genre,
+                  tags,
+                  age,
+                  final_price,
+                  initial_price,
+                ],
+                function (err) {
+                  if (err) {
+                    return console.error(err.message);
+                  }
+                  console.log(`${gameName} has been inserted!`);
+                }
+              );
+            }
+            // AFTER the IF that adds the game to our database (or fetches it) will now have the proper data to be sent to the front-end.
+            // Checking if the current game is in out checked list or not
+            const indexOfGame = sharedGameNames.indexOf(gameName);
+            // TODO: Would it be better to use a games ID here? Can a game have the same name as another?
+            if (indexOfGame != -1) {
+              // It IS THERE so curGame append the SteamID to the "current owners"
+              ownedByWho[indexOfGame].push(i);
+            } else {
+              // it IS NOT there so make a new entry with name, image, & link
+              sharedGameNames.push(gameName);
+              gameImages.push(gamePic);
+              gameLinks.push(gameURL);
+              // Add the SteamID to a new array and start the appending process
+              let temp = [];
+              temp.push(i);
+              ownedByWho.push(temp);
+            }
+          }
+        );
       }
     }
 
@@ -304,13 +394,17 @@ app.get("/test", async (req, res) => {
   res.render("test");
 });
 
+app.get("/altTest", async (req, res) => {
+  res.render("altTest");
+});
+
 app.get("/logout", (req, res) => {
-  res.clearCookie('steamID');
-  res.clearCookie('username');
-  res.clearCookie('avatar');
-  res.clearCookie('roomNumber');
-  
-  res.render('index');
+  res.clearCookie("steamID");
+  res.clearCookie("username");
+  res.clearCookie("avatar");
+  res.clearCookie("roomNumber");
+
+  res.render("index");
 });
 
 server.listen(3000, () => {

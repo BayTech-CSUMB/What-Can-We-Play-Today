@@ -125,6 +125,10 @@ button:hover {
 
 }
 
+#backButton {
+    max-height: 5vh;
+}
+
 .userIconInList {
     max-height: 7vh;
     align-self: center;
@@ -146,10 +150,29 @@ button:hover {
 #logo {
     max-height: 8vh;
     margin-top: 1.5vh;
+    margin-bottom: 1.5vh;
 }
 
 nav {
     background-color: #0B0E13;
-    text-align: center;
     max-height: 10vh;
+    display: flex;
+    justify-content: center;
+}
+
+#logoItem {
+    flex: 1;
+}
+
+#backItem {
+    align-self: center;
+}
+
+#roomChoiceButtons {
+    display: flex;
+    justify-content: center;
+}
+
+#isUser {
+    color: white;
 }
