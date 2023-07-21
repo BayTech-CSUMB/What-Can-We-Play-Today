@@ -58,8 +58,81 @@ let database = new sqlite3.Database(
   }
 );
 
+const db = require('better-sqlite3')(`./private/games.db`);
+// const db = require('better-sqlite3')(`games.db`, options);
+
+// ================== RUNTIME VARIABLES ==================
+
 // TODO: Consolidate the two room structs (this & socketRooms) so we don't use extra memory.
 let existingRooms = [];
+// Sockets used for members of the same room
+function Room(roomNumber, roomMembers) {
+  this.roomNumber = roomNumber;
+  this.roomMembers = roomMembers;
+}
+let socketRooms = [];
+
+// ================== FUNCTIONS ==================
+
+async function fetchTags(gameID) {
+  const url = `https://steamspy.com/api.php?request=appdetails&appid=${gameID}`;
+  const response = await fetch(url);
+  const result = await response.json();
+  const tags = Object.keys(result.tags).join(",");
+  return tags;
+}
+
+// TODO: Make this dynamically generate a YYYY-MM-DD format
+function generateDate() {
+  return `2023-07-20`;
+}
+
+async function fetchGenresPrices(gameID) {
+  // Then Steam's API for majority of the data. From this we want the "categories" and pricing of each game.
+  const steamURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}&l=en`;
+  const response2 = await fetch(steamURL);
+  const result2 = await response2.json();
+  let initial_price = `Free`;
+  let final_price = `Free`;
+  let genre = ``;
+
+  // DEBUG: Check Output
+  // console.log(result2);
+
+  if (result2[`${gameID}`].success == true) { // ensures no de-listed games
+    // Getting the price of the games
+    let priceOverview = result2[`${gameID}`].data.price_overview;
+    if (typeof priceOverview != `undefined`) {
+      //   if (!result2[`${gameID}`].data.is_free) {
+      final_price = priceOverview.final_formatted; // final
+      initial_price = priceOverview.initial_formatted; // initial
+    }
+    // Getting the "categories" of the game
+    let categories = result2[`${gameID}`].data.categories;
+    let descriptions = ``;
+    if (typeof categories != `undefined`) {
+      descriptions = categories.map((category) => category.description);
+      genre = descriptions.join();
+    } else {
+      genre = `Single-player`;
+    }
+  } else {
+    genre = `Single-player`;
+    initial_price = `Free`;
+    final_price = `Free`;
+  }
+
+  return [genre, initial_price, final_price];
+}
+
+function computeDateDiff(dateToCompare) {
+  const curDate = generateDate();
+
+  // TODO: Utilize current date & the to compare one and see how many days "past expiration" it is. If it's greater than or equal to 3, return TRUE otherwise return FALSE
+  return false; // placeholder return for now.
+}
+
+// ================== ROUTES ==================
 
 // corresponds to page.com
 app.get("/", (req, res) => {
@@ -184,13 +257,6 @@ app.post("/alt-login", async (req, res) => {
   }
 });
 
-//Sockets used for members of the same room
-function Room(roomNumber, roomMembers) {
-  this.roomNumber = roomNumber;
-  this.roomMembers = roomMembers;
-}
-let socketRooms = [];
-
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
   // Used to generate room with its members
@@ -250,7 +316,7 @@ io.on("connection", (socket) => {
     let ownedByWho = [];
     let gameImages = [];
     let gameLinks = [];
-    let gameTags = []; // TODO: Add Tag functionality
+    let gameTags = [];
 
     // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
@@ -275,7 +341,9 @@ io.on("connection", (socket) => {
         const gamePic = gameInfo[curGame].url_store_header;
         const gameURL = gameInfo[curGame].url_store;
         const gameID = gameInfo[curGame].appID;
+        // Variables to be set later with API fetches
         let tags = ``;
+        let genre = ``;
         let final_price = `Free`;
         let initial_price = `Free`;
 
@@ -283,58 +351,39 @@ io.on("connection", (socket) => {
 
         // FIRST we query our database to see if we HAVE the game there or not
         database.get(
-          `SELECT * FROM Games WHERE gameID = ?`,
-          gameID,
+          `SELECT * FROM Games WHERE gameID = ?`, gameID,
           async function (err, row) {
             if (err) return console.error(err.message);
-            // Checking the result of our Query
+            // DEBUG: Checking the result of our Query
+            // console.log(`Checking Game: ${gameName}`);
+
             if (row) {
-              // Game WAS found so we either retrieve the data OR if the data is past expiration we'll re-query it.
-              
-                // if ("game is a singleplayer game (check database col)") {
-                //     // ignore the game entirely
-                // } else if ("the game is past expiration") {
-                //     // "re-fetch the data and update the query"
-                // } else {
-                //     // data is good so query from database & set all the variables to the result
-                // }
-                // TODO: In the case of a user with a large/niche library surpassing 200 calls we'll have to set things to null and then re-query possibly.
+              // First we'll check to see if the game is SINGLE PLAYER and if it is then we'll just fetch some data and proceed.
+              if (row.is_multiplayer == `0`) {
+                // TODO: Nothing for now, all games are set to multiplayer down below for functionalities sake.
+              } else if (computeDateDiff(row.age)) {
+                // iff >= 3 days old
+                // TODO: Re-query the APIs for data and update the database.
+              } else {
+                // normal fetch. Game is Multi & less than 3 days old.
+                tags = row.tags;
+                genre = row.genre;
+                initial_price = row.initial_price;
+                final_price = row.price;
+              }
+
+              // TODO: In the case of a user with a large/niche library surpassing 200 calls we'll have to set things to null and then re-query possibly.
             } else {
               // Game was NOT found so we'll have to add it.
+              tags = await fetchTags(gameID);
+              [genre, initial_price, final_price] = await fetchGenresPrices(gameID);
+              let age = generateDate();
 
-              function parseTags(inputTags) {
-                return Object.keys(inputTags).join(",");
-              }
+              // TODO: As of now, all games inserted are marked as multiplayer to ensure the code works, but we'll need to scan these at some point probably with some regex/find function and ensure the insert is proper (0=single 1=multi).
 
-              // First SteamSPY's API for the detailed tags of a game.
-              const url = `https://steamspy.com/api.php?request=appdetails&appid=${gameID}`;
-              const response = await fetch(url);
-              const result = await response.json();
-              tags = parseTags(result.tags);
-
-              // Then Steam's API for majority of the data. From this we want the "categories" and pricing of each game.
-              const steamURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}&l=en`;
-              const response2 = await fetch(steamURL);
-              const result2 = await response2.json();
-
-              // Getting the price of the games
-              let priceOverview = result2[`${gameID}`].data.price_overview;
-              if (!result2[`${gameID}`].data.is_free) {
-                final_price = priceOverview.final_formatted; // final
-                initial_price = priceOverview.initial_formatted; // initial
-              }
-              // Getting the "categories" of the game
-              let descriptions = result2[`${gameID}`].data.categories.map(
-                (category) => category.description
-              );
-              let genre = descriptions.join();
-
-              // Age is self made independent of the APIs and meant to catalog the age of the record so if it passes a certain range it'll be re-queried.
-              let age = `2023-07-20`;
-
-              // Inserting into the database if it's not there
-              database.run(
-                `INSERT INTO Games (gameID, name, genre, tags, age, price, initial_price) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              // Inserting into the database if it's not there.
+            database.run(
+                `INSERT INTO Games (gameID, name, genre, tags, age, price, initial_price, is_multiplayer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                   gameID,
                   gameName,
@@ -343,11 +392,10 @@ io.on("connection", (socket) => {
                   age,
                   final_price,
                   initial_price,
+                  `1`,
                 ],
                 function (err) {
-                  if (err) {
-                    return console.error(err.message);
-                  }
+                  if (err) return console.error(err.message);
                   console.log(`${gameName} has been inserted!`);
                 }
               );
@@ -364,6 +412,7 @@ io.on("connection", (socket) => {
               sharedGameNames.push(gameName);
               gameImages.push(gamePic);
               gameLinks.push(gameURL);
+              gameTags.push(tags);
               // Add the SteamID to a new array and start the appending process
               let temp = [];
               temp.push(i);
@@ -374,6 +423,8 @@ io.on("connection", (socket) => {
       }
     }
 
+    console.log(sharedGameNames);
+
     socket.join("room-" + roomNumber);
     io.sockets.in("room-" + roomNumber).emit("finalList", {
       roomMembers: roomMembers,
@@ -381,6 +432,7 @@ io.on("connection", (socket) => {
       owners: ownedByWho,
       images: gameImages,
       links: gameLinks,
+      tags: gameTags,
     });
   });
 });
@@ -391,10 +443,93 @@ app.get("/list", async (req, res) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
+  console.log("test");
+
+  let gameInfo = [];
+  let gameCount = 0;
+  // Set this to whomever's account to pre-add their games to the database.
+  const curMembersID = `76561198016716226`;
+
+  // An API function that will set gameCount and gameInfo to the total count of a users games and an array of their games respectively.
+  await steamWrapper
+    .getOwnedGames(curMembersID, null, true)
+    .then((result) => {
+      gameCount = result.data.count;
+      gameInfo = result.data.games;
+    })
+    .catch(console.error);
+
+  // Now we can iterate through the CURRENT USERS GAMES using the data from the above function.
+
+  // SET THIS TO SOME NUMBER TO TEST ADDING UP TO THAT MANY GAMES. 
+  // Can ignore if you don't have too many games.
+  // gameCount = ?
+
+  for (let curGame = 0; curGame < gameCount; curGame++) {
+    const gameName = gameInfo[curGame].name;
+    const gameID = gameInfo[curGame].appID;
+    // Variables to be set later with API fetches
+    let tags = ``;
+    let genre = ``;
+    let final_price = `Free`;
+    let initial_price = `Free`;
+
+    // FIRST we query our database to see if we HAVE the game there or not
+    database.get(
+      `SELECT * FROM Games WHERE gameID = ?`,
+      gameID,
+      async function (err, row) {
+        if (err) return console.error(err.message);
+        // Checking the result of our Query
+        if (row) {
+          tags = row.tags;
+          genre = row.genre;
+          initial_price = row.initial_price;
+          final_price = row.price;
+        } else {
+          // Game was NOT found so we'll have to add it.
+          tags = await fetchTags(gameID);
+          let temp = await fetchGenresPrices(gameID);
+          //   [genre, initial_price, final_price] = fetchGenresPrices(gameID);
+          genre = temp[0];
+          initial_price = temp[1];
+          final_price = temp[2];
+
+          let age = generateDate();
+
+          database.run(
+            `INSERT INTO Games (gameID, name, genre, tags, age, price, initial_price, is_multiplayer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              gameID,
+              gameName,
+              genre,
+              tags,
+              age,
+              final_price,
+              initial_price,
+              `1`,
+            ],
+            function (err) {
+              if (err) return console.error(err.message);
+              console.log(`${gameName} has been inserted!`);
+            }
+          );
+        }
+      }
+    );
+  }
+
   res.render("test");
 });
 
 app.get("/altTest", async (req, res) => {
+
+    const gameID = `620`;
+
+    // const row = db.prepare(`SELECT * FROM Games`).get();
+    const row = db.prepare('SELECT * FROM Games WHERE gameID = ?').get(gameID);
+    console.log(row);
+
   res.render("altTest");
 });
 
