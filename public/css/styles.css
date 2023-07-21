@@ -66,6 +66,7 @@ button:hover {
     color: white;
     font-family: 'Kanit', sans-serif;
     font-size: larger;
+    align-self: flex-start;
 }
 
 .gameTag {
@@ -77,6 +78,7 @@ button:hover {
     align-self: flex-start;
     border-radius: 6px;
     padding: 8px;
+    margin-right: 0.5vw;
 }
 
 .seperator {
@@ -111,6 +113,10 @@ button:hover {
     font-family: 'Kanit', sans-serif;
     color: #B1B1B1;
     text-decoration: underline;
+}
+
+.tagHolder {
+    display: flex;
 }
 
 .roomMembers {

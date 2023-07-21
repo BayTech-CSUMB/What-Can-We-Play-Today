@@ -37,10 +37,12 @@
       let ownedByWho = data.owners;
       let gameLinks = data.links;
       let gameImages = data.images;
+      let gameTags = data.tags;
 
     //   console.log(roomMembers);
     //   console.log(`Owned By Front-end: ${ownedByWho[0]}`);
-        console.log(ownedByWho);
+        // console.log(ownedByWho);
+        // console.log(gameTags);
 
       function invertOwners(someArr) {
         let temp = [];
@@ -63,6 +65,19 @@
         return result;
       }
 
+      function buildTags(tagsStringForm) {
+        if (tagsStringForm != '') {
+            let temp = tagsStringForm.split(',');
+            let toReturn = ``;
+            for (let i = 0; i < 2; i++) {
+                toReturn += `<p class="gameTag"> ${temp[i]} </p>`;
+            }
+            return toReturn;
+        } else {
+            return '';
+        }
+      }
+
       let suggestDiv = document.getElementById("toGrab");
       let recommendDiv = document.querySelector("#recGames");
 
@@ -73,14 +88,19 @@
       ) {
         for (let i = 0; i < sharedGameNames.length; i++) {
             // IF the game is NOT owned by everyone, do the top case.
+          let tempTag = buildTags(gameTags[i]);
           if (ownedByWho[i].length != roomMembers.length) {
+
             let users = convertToUser(invertOwners(ownedByWho[i]));
+
             recommendDiv.innerHTML += `
                 <div class="gameItem">
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
                     <div class="seperator">
                         <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
-                        <p class="gameTag"> Multiplayer </p>
+                        <div class="tagHolder">
+                            ${tempTag}
+                        </div>
                     </div>
                     <div class="roomMembers">
                         <p class="gameMemberText"> NOT OWNED BY </>
@@ -96,7 +116,9 @@
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
                     <div class="seperator">
                         <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
-                        <p class="gameTag"> Multiplayer </p>
+                        <div class="tagHolder">
+                            ${tempTag}
+                        </div>
                     </div>
                 </div>
                 `;
