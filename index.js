@@ -306,6 +306,7 @@ io.on("connection", (socket) => {
     let gameImages = [];
     let gameLinks = [];
     let gameTags = [];
+    let gamePrices = [];
 
     // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
@@ -341,6 +342,7 @@ io.on("connection", (socket) => {
           .prepare("SELECT * FROM Games WHERE gameID = ?")
           .get(`${gameID}`);
 
+        // TODO: Note that some de-listed games will have their prices listed as "free" but maybe we should put it as something else to show users it's de-listed?
         if (localGame) {
           // First we'll check to see if the game is SINGLE PLAYER and if it is then we'll just fetch some data and proceed.
           if (localGame.is_multiplayer == `0`) {
@@ -382,6 +384,12 @@ io.on("connection", (socket) => {
           gameImages.push(gamePic);
           gameLinks.push(gameURL);
           gameTags.push(tags);
+          let prices = [];
+          prices.push(final_price);
+          if (initial_price != '' && initial_price != 'Free') {
+            prices.push(initial_price);
+          }
+          gamePrices.push(prices);
           // Add the SteamID to a new array and start the appending process
           let temp = [];
           temp.push(i);
@@ -399,6 +407,7 @@ io.on("connection", (socket) => {
       images: gameImages,
       links: gameLinks,
       tags: gameTags,
+      prices: gamePrices
     });
   });
 });
@@ -409,6 +418,16 @@ app.get("/list", async (req, res) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
+
+    let gameID = `99999999`;
+    const rez = db.prepare(`SELECT * FROM Games WHERE gameID = ?`).get(gameID);
+    console.log(rez);
+
+  res.render("test");
+});
+
+// DEBUG: For checking functions and other back-end code.
+app.get("/altTest", async (req, res) => {
   console.log("Checking for new games to add...");
 
   let gameInfo = [];
@@ -459,15 +478,6 @@ app.get("/test", async (req, res) => {
   }
 
   console.log("Finished adding games!");
-  res.render("test");
-});
-
-app.get("/altTest", async (req, res) => {
-  const gameID = `240`;
-
-  // const row = db.prepare(`SELECT * FROM Games`).get();
-  const row = db.prepare("SELECT * FROM Games WHERE gameID = ?").get(gameID);
-  console.log(row);
 
   res.render("altTest");
 });

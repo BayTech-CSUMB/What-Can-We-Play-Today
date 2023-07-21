@@ -38,11 +38,13 @@
       let gameLinks = data.links;
       let gameImages = data.images;
       let gameTags = data.tags;
+      let gamePrices = data.prices;
 
     //   console.log(roomMembers);
     //   console.log(`Owned By Front-end: ${ownedByWho[0]}`);
         // console.log(ownedByWho);
         // console.log(gameTags);
+        // console.log(gamePrices);
 
       function invertOwners(someArr) {
         let temp = [];
@@ -78,6 +80,17 @@
         }
       }
 
+      function buildPrices(gamesPrices) {
+        let toReturn = ``;
+        if (gamesPrices.length == 2) {
+            toReturn += `<p class="normalPrice"> ${gamesPrices[0]} </p>`
+            toReturn += `<p class="fullPrice"> ${gamesPrices[1]} </p>`;
+        } else {
+            toReturn += `<p class="normalPrice"> ${gamesPrices[0]} </p>`;
+        }
+        return toReturn;
+      }
+
       let suggestDiv = document.getElementById("toGrab");
       let recommendDiv = document.querySelector("#recGames");
 
@@ -89,6 +102,8 @@
         for (let i = 0; i < sharedGameNames.length; i++) {
             // IF the game is NOT owned by everyone, do the top case.
           let tempTag = buildTags(gameTags[i]);
+          let tempPrice = buildPrices(gamePrices[i]);
+
           if (ownedByWho[i].length != roomMembers.length) {
 
             let users = convertToUser(invertOwners(ownedByWho[i]));
@@ -100,6 +115,7 @@
                         <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
                         <div class="tagHolder">
                             ${tempTag}
+                            ${tempPrice}
                         </div>
                     </div>
                     <div class="roomMembers">
@@ -118,6 +134,7 @@
                         <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
                         <div class="tagHolder">
                             ${tempTag}
+                            ${tempPrice}
                         </div>
                     </div>
                 </div>

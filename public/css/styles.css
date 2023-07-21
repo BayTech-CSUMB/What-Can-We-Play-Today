@@ -81,6 +81,27 @@ button:hover {
     margin-right: 0.5vw;
 }
 
+.normalPrice {
+    color: #B3EE11;
+    font-family: 'Kanit', sans-serif;
+    font-size: larger;
+    align-self: center;
+    margin-bottom: 0;
+    margin-top: 2vh;
+    margin-right: 0.5vw;
+}
+
+.fullPrice {
+    color: #B1B1B1;
+    text-decoration: line-through;
+    font-family: 'Kanit', sans-serif;
+    font-size: large;
+    align-self: center;
+    margin-bottom: 0;
+    margin-top: 2vh;
+    margin-right: 0.5vw;
+}
+
 .seperator {
     display: flex;
     flex-direction: column;
