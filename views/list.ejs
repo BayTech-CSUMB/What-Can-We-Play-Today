@@ -2,6 +2,7 @@
 <%- include('partials/navbar.ejs') %>
 
 <button id= "leave" style="background-color: red;">LEAVE ROOM</button>
+<div id="filter"> </div>
 <body onload="sendMessage()">
     <div class="gradient-background">
         <div id="toGrab"></div>
@@ -39,6 +40,7 @@
       let gameImages = data.images;
       let gameTags = data.tags;
       let gamePrices = data.prices;
+      let catagories = data.catagories;
 
     //   console.log(roomMembers);
     //   console.log(`Owned By Front-end: ${ownedByWho[0]}`);
@@ -142,6 +144,12 @@
           }
         }
       }
+
+    function setCats (){
+      filter = document.getElementById('filter');
+      filter.innerHTML(`<p>${catagories[1]}</p>`);
+    };
+
     });
   };
 
