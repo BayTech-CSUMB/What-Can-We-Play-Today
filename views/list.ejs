@@ -12,8 +12,17 @@
         <!-- <div id="roomMembers">
             <h6> MEMBERS </h6>
         </div> -->
+        Filter By Category:
+        <div id = "menuDiv">
+          
+        </div>
+
     </div>
+
+
+
 </body>
+
 
 <script>
   const socket = io("<%= url %>");
@@ -24,6 +33,12 @@
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
     let roomNumber = Cookies.get("roomNumber");
+    function filterBySelected(event){
+        const selected = event.target.value;
+        socket.emit('query', selected, (result) => {
+          console.log("CHECKER : " + result.name);
+        });
+      }
 
     socket.emit("generate", {
       steamID: steamID,
@@ -31,7 +46,6 @@
       avatar: avatar,
       roomNumber: roomNumber,
     });
-
     socket.on("finalList", (data) => {
       let roomMembers = data.roomMembers;
       let sharedGameNames = data.games;
@@ -42,11 +56,28 @@
       let gamePrices = data.prices;
       let catagories = data.catagories;
 
-    //   console.log(roomMembers);
-    //   console.log(`Owned By Front-end: ${ownedByWho[0]}`);
-        // console.log(ownedByWho);
-        // console.log(gameTags);
-        // console.log(gamePrices);
+      const categoryArray = catagories.map((str) => str.replace(/['"] + /g, ''));
+      console.log(categoryArray);
+      function dropDownMenu(){
+        const menu = document.createElement("select");
+        // menu.id = "menu";
+        for (let i = 0; i < categoryArray.length; i++){
+          const option = document.createElement("option");
+          option.value = categoryArray[i];
+          option.setAttribute('name', "optionn");
+          option.textContent = categoryArray[i];
+          menu.appendChild(option);
+        }
+
+        let menuDiv = document.getElementById("menuDiv");
+        menuDiv.appendChild(menu);
+
+        menu.addEventListener("change", filterBySelected);
+      }
+
+      
+      dropDownMenu();
+
 
       function invertOwners(someArr) {
         let temp = [];

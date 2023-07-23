@@ -248,6 +248,19 @@ app.post("/alt-login", async (req, res) => {
 
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
+
+  socket.on('query', (optionn, callback) => {
+    const query = db.prepare(`SELECT * FROM Games WHERE tags LIKE ?;`).get(`%${optionn}%`);
+    console.log(`${optionn}`);
+      if(query){
+        callback(query);
+        console.log(query);
+      }
+      else{
+        callback("NONE");
+        console.log("IDK");
+      }
+    });
   // Used to generate room with its members
   socket.on("message", (data) => {
     let roomNumber = data.roomNumber;
@@ -492,7 +505,6 @@ io.on("connection", (socket) => {
 });
 
 app.get("/list", async (req, res) => {
-  
   res.render("list", { url: config.url });
 });
 
