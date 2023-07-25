@@ -2,6 +2,10 @@
 <%- include('partials/navbar.ejs') %>
 
 <button id= "leave" style="background-color: red;">LEAVE ROOM</button>
+<p> Filter By Category: </p>
+<div id = "menuDiv">
+</div>
+<div id="filter"> </div>
 <body onload="sendMessage()">
     <div class="gradient-background">
         <div id="toGrab"></div>
@@ -11,8 +15,13 @@
         <!-- <div id="roomMembers">
             <h6> MEMBERS </h6>
         </div> -->
+
     </div>
+
+
+
 </body>
+
 
 <script>
   const socket = io("<%= url %>");
@@ -23,6 +32,12 @@
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
     let roomNumber = Cookies.get("roomNumber");
+    function filterBySelected(event){
+        const selected = event.target.value;
+        socket.emit('query', selected, (result) => {
+          console.log("CHECKER : " + result.name);
+        });
+      }
 
     socket.emit("generate", {
       steamID: steamID,
@@ -30,17 +45,40 @@
       avatar: avatar,
       roomNumber: roomNumber,
     });
-
     socket.on("finalList", (data) => {
       let roomMembers = data.roomMembers;
       let sharedGameNames = data.games;
       let ownedByWho = data.owners;
       let gameLinks = data.links;
       let gameImages = data.images;
+      let gameTags = data.tags;
+      let gamePrices = data.prices;
+      let catagories = data.catagories;
+      let filteredGames = data.filteredGames;
+      
+      console.log("FILTERED NAMES : " + filteredGames);
+      const categoryArray = catagories.map((str) => str.replace(/['"] + /g, ''));
+      console.log(categoryArray);
+      function dropDownMenu(){
+        const menu = document.createElement("select");
+        // menu.id = "menu";
+        for (let i = 0; i < categoryArray.length; i++){
+          const option = document.createElement("option");
+          option.value = categoryArray[i];
+          option.setAttribute('name', "optionn");
+          option.textContent = categoryArray[i];
+          menu.appendChild(option);
+        }
 
-    //   console.log(roomMembers);
-    //   console.log(`Owned By Front-end: ${ownedByWho[0]}`);
-        console.log(ownedByWho);
+        let menuDiv = document.getElementById("menuDiv");
+        menuDiv.appendChild(menu);
+
+        menu.addEventListener("change", filterBySelected);
+      }
+
+      
+      dropDownMenu();
+
 
       function invertOwners(someArr) {
         let temp = [];
@@ -63,6 +101,30 @@
         return result;
       }
 
+      function buildTags(tagsStringForm) {
+        if (tagsStringForm != '') {
+            let temp = tagsStringForm.split(',');
+            let toReturn = ``;
+            for (let i = 0; i < 2; i++) {
+                toReturn += `<p class="gameTag"> ${temp[i]} </p>`;
+            }
+            return toReturn;
+        } else {
+            return '';
+        }
+      }
+
+      function buildPrices(gamesPrices) {
+        let toReturn = ``;
+        if (gamesPrices.length == 2) {
+            toReturn += `<p class="normalPrice"> ${gamesPrices[0]} </p>`
+            toReturn += `<p class="fullPrice"> ${gamesPrices[1]} </p>`;
+        } else {
+            toReturn += `<p class="normalPrice"> ${gamesPrices[0]} </p>`;
+        }
+        return toReturn;
+      }
+
       let suggestDiv = document.getElementById("toGrab");
       let recommendDiv = document.querySelector("#recGames");
 
@@ -73,14 +135,22 @@
       ) {
         for (let i = 0; i < sharedGameNames.length; i++) {
             // IF the game is NOT owned by everyone, do the top case.
+          let tempTag = buildTags(gameTags[i]);
+          let tempPrice = buildPrices(gamePrices[i]);
+
           if (ownedByWho[i].length != roomMembers.length) {
+
             let users = convertToUser(invertOwners(ownedByWho[i]));
+
             recommendDiv.innerHTML += `
                 <div class="gameItem">
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
                     <div class="seperator">
                         <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
-                        <p class="gameTag"> Multiplayer </p>
+                        <div class="tagHolder">
+                            ${tempTag}
+                            ${tempPrice}
+                        </div>
                     </div>
                     <div class="roomMembers">
                         <p class="gameMemberText"> NOT OWNED BY </>
@@ -96,13 +166,22 @@
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
                     <div class="seperator">
                         <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
-                        <p class="gameTag"> Multiplayer </p>
+                        <div class="tagHolder">
+                            ${tempTag}
+                            ${tempPrice}
+                        </div>
                     </div>
                 </div>
                 `;
           }
         }
       }
+
+    function setCats (){
+      filter = document.getElementById('filter');
+      filter.innerHTML(`<p>${catagories[1]}</p>`);
+    };
+
     });
   };
 
