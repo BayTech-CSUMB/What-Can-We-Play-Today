@@ -149,9 +149,112 @@ app.get("/auth/steam/authenticate", async (req, res) => {
     res.cookie("steamID", user["steamid"]);
     res.cookie("username", user["username"]);
     res.cookie("avatar", user["avatar"]["medium"]);
+    
+    let steamid = parseInt(user['steamid']);
 
     // DEBUG: Checking who is logged in via Backend
     console.log(`${user["username"]} has logged in!`);
+
+    // TODO: Call the API and loop through all of a Users games and add them both to the Users table and the Games table if they're not present already.
+    //      We're doing this so that during later parts of the site we can apply filters and only do DB queries instead of querying the API constantly again.
+
+    //Gets user's games and adds them to database if they are not already there
+
+    // An API function that will set gameCount and gameInfo to the total count
+    // of a users games and aan array of their games respectively.
+
+    
+    /*
+    await steamWrapper
+      .getOwnedGames(steamid, null, true)
+      .then((result) => {
+        gameCount = result.data.count;
+        gameInfo = result.data.games;
+      })
+      .catch(console.error);
+
+      // We iterate through the users' games using the data from the above function
+      for (let curGame = 0; curGame < gameCount; curGame++){
+        console.log(`Checking current game: ${curGame}`)
+        const gameName = gameInfo[curGame].name;
+        const gamePic = gameInfo[curGame].url_store_header;
+        const gameURL = gameInfo[curGame].url_store;
+        const gameID = gameInfo[curGame].appID;
+
+        // Variables that are set later with API fetches
+        let tags = '';
+        let genre = '';
+        let final_price = 'Free';
+        let initial_price = 'Free';
+
+        // FIRST we query our database to see if we HAVE the game or not
+        const localGame = db
+          .prepare("SELECT * FROM Games WHERE gameID = ?")
+          .get(`${gameID}`);
+
+        // We then check if the user has games registered in the database
+        const userGames = db
+          .prepare("SELECT * From Users Where userID = ? AND gameID = ?")
+          .get([`${steamid}`, `${gameID}`]);
+        
+        // if the game is located we check if the user has the game in their database
+        if(localGame){
+          if (computeDateDiff(localGame.age)){
+            //Iff >= 3 days old then re-query
+          }
+          //If they don't have it we add it to their database else do nothing
+          if(!userGames){
+            db.prepare(
+              `INSERT INTO Users (userID, gameID) VALUES (?,?)`
+              .run(
+                steamid,
+                gameID
+              )
+            )
+          }
+        } else {
+          // Case if the game is not located in the database
+          // We query game and add it to the games table along with the users personal table
+
+          tags = await fetchTags(gameID);
+          let temp = await fetchGenresPrices(gameID);
+          genre = temp[0];
+          initial_price = temp[1];
+          final_price = temp [2];
+          let is_multiplayer = 1;
+          let age = generateDate();
+
+          // If its single player
+          if(!tags.includes(`Multi-player`)){
+            is_multiplayer = 0;
+          }
+
+          db.prepare(
+            `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ).run(
+            gameID,
+            gameName,
+            genre,
+            tags,
+            age,
+            final_price,
+            initial_price,
+            is_multiplayer,
+            gamePic,
+            gameURL
+          );
+
+          db.prepare(
+            `INSERT INTO Users (userID, gameID) VALUES (?,?)`
+          ).run(
+            steamid,
+            gameID
+          )
+        }
+
+
+
+      } */
 
     res.render("room-choice");
   } catch (error) {
@@ -249,18 +352,19 @@ app.post("/alt-login", async (req, res) => {
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
 
-  socket.on('query', (optionn, callback) => {
-    const query = db.prepare(`SELECT * FROM Games WHERE tags LIKE ?;`).get(`%${optionn}%`);
-    console.log(`${optionn}`);
-      if(query){
-        callback(query);
-        console.log(query);
-      }
-      else{
-        callback("NONE");
-        console.log("IDK");
-      }
-    });
+  // socket.on('query', (option, callback) => {
+  //   const query = db.prepare(`SELECT * FROM Games WHERE tags LIKE ? AND is_multiplayer = 1`).all(`%${option}%`);
+  //   console.log(`${option}`);
+  //     if (query) {
+  //       callback(query);
+  //       console.log(query);
+  //     }
+  //     else{
+  //       callback("NONE");
+  //       console.log("IDK");
+  //     }
+  //   });
+
   // Used to generate room with its members
   socket.on("message", (data) => {
     let roomNumber = data.roomNumber;
@@ -310,9 +414,7 @@ io.on("connection", (socket) => {
   // Sort by amount of time played and then generate shared list
   socket.on("generate", async (data) => {
     const roomNumber = data.roomNumber;
-    const roomMembers = socketRooms.find(
-      (x) => x.roomNumber === roomNumber
-    ).roomMembers;
+    const roomMembers = socketRooms.find((x) => x.roomNumber === roomNumber).roomMembers;
     // Arrays to be sent to the front-end later.
     let sharedGameNames = [];
     let ownedByWho = [];
@@ -322,6 +424,8 @@ io.on("connection", (socket) => {
     let gamePrices = [];
     let catagories = [];
     let unique = [];
+    let filteredGames = [];
+
 
     // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
@@ -488,11 +592,32 @@ io.on("connection", (socket) => {
       }
     }
 
+    socket.on('query', (option, callback) => {
+      
+      const query = db.prepare(`SELECT * FROM Games WHERE tags LIKE ? AND is_multiplayer = 1`).all(`%${option}%`);
+      console.log(`${option}`);
+      console.log("SHARED" + sharedGameNames);
+      // console.log("QUERY " + query.name);
+        if (query) {
+          for(let i = 0; i < query.length; i++ ){
+            if(sharedGameNames.includes(query[i].name)){
+              callback(query);
+              filteredGames.push(query[i].name);
+
+            }
+          }
+          console.log("FILTERED: " + filteredGames);
+        }
+        else{
+          callback("NONE");
+        }
+      });
 
     // Finally emit the data to all room members.
     socket.join("room-" + roomNumber);
     io.sockets.in("room-" + roomNumber).emit("finalList", {
       roomMembers: roomMembers,
+      filteredGames: filteredGames,
       games: sharedGameNames,
       owners: ownedByWho,
       images: gameImages,
@@ -510,9 +635,11 @@ app.get("/list", async (req, res) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
-  let gameID = `99999999`;
-  const rez = db.prepare(`SELECT * FROM Games WHERE gameID = ?`).get(gameID);
-  console.log(rez);
+//   let gameID = `FPS`;
+//   const rez = db.prepare(`SELECT * FROM Games WHERE tags LIKE ? AND is_multiplayer = 1`).all(`%${gameID}%`);
+// //   const query = db.prepare(`SELECT * FROM Games WHERE tags LIKE ?;`).get(`%${optionn}%`);
+//   console.log(rez);
+
 
   res.render("test");
 });

@@ -2,6 +2,9 @@
 <%- include('partials/navbar.ejs') %>
 
 <button id= "leave" style="background-color: red;">LEAVE ROOM</button>
+<p> Filter By Category: </p>
+<div id = "menuDiv">
+</div>
 <div id="filter"> </div>
 <body onload="sendMessage()">
     <div class="gradient-background">
@@ -12,10 +15,6 @@
         <!-- <div id="roomMembers">
             <h6> MEMBERS </h6>
         </div> -->
-        Filter By Category:
-        <div id = "menuDiv">
-          
-        </div>
 
     </div>
 
@@ -55,7 +54,9 @@
       let gameTags = data.tags;
       let gamePrices = data.prices;
       let catagories = data.catagories;
-
+      let filteredGames = data.filteredGames;
+      
+      console.log("FILTERED NAMES : " + filteredGames);
       const categoryArray = catagories.map((str) => str.replace(/['"] + /g, ''));
       console.log(categoryArray);
       function dropDownMenu(){
