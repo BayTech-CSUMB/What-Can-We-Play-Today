@@ -485,6 +485,9 @@ io.on("connection", (socket) => {
       });
     }
 
+    
+    // TODO: Emits need to be ONLY for the specific user at this point. Only on certain occasions (like when a new user joins or leaves) will a wide emit be needed.
+    
     // Finally emit the data to all room members.
     io.sockets.in("room-" + roomNumber).emit("finalList", {
       roomMembers: roomMembers,
@@ -527,45 +530,74 @@ app.get("/altTest", async (req, res) => {
   let gameInfo = [];
   let gameCount = 0;
   // Set this to whomever's account to pre-add their games to the database
-  const curMembersID = `76561198016716226`;
+  const steamID = `76561198016716226`;
 
   // An API function that will set gameCount and gameInfo to the total count of a users games and an array of their games respectively.
   await steamWrapper
-    .getOwnedGames(curMembersID, null, true)
+    .getOwnedGames(steamID, null, true)
     .then((result) => {
       gameCount = result.data.count;
       gameInfo = result.data.games;
     })
     .catch(console.error);
 
-  // Now we can iterate through the CURRENT USERS GAMES using the data from the above function.
+    // gameCount = ;
 
-  // SET THIS TO SOME NUMBER TO TEST ADDING UP TO THAT MANY GAMES.
-  // Can ignore if you don't have too many games.
-  // gameCount = ?
-
+  // We iterate through the users' games using the data from the above function
   for (let curGame = 0; curGame < gameCount; curGame++) {
     const gameName = gameInfo[curGame].name;
+    const gamePic = gameInfo[curGame].url_store_header;
+    const gameURL = gameInfo[curGame].url_store;
     const gameID = gameInfo[curGame].appID;
-    // Variables to be set later with API fetches
-    let tags = ``;
-    let genre = ``;
-    let final_price = `Free`;
-    let initial_price = `Free`;
 
-    // FIRST we query our database to see if we HAVE the game there or not
+    // Variables that are et later with API fetches
+    let tags = "";
+    let genre = "";
+    let final_price = "Free";
+    let initial_price = "Free";
+
+    // FIRST we query our database to see if we HAVE the game or not
     const localGame = db
       .prepare("SELECT * FROM Games WHERE gameID = ?")
       .get(`${gameID}`);
 
-    if (!localGame) {
+    // Then check if the user has the local game registered in the database
+    const userPotentialGame = db
+      .prepare("SELECT * FROM Users WHERE userID = ? AND gameID = ?")
+      .get([`${steamID}`, `${gameID}`]);
+
+    // if the game is located we check if the user has the game in their database
+    if (localGame) {
+      // IFF >= 3 days old then re-query
+      if (computeDateDiff(localGame.age)) {
+        // TODO:
+      }
+      // If they don't have the game in their table we add it to their database else do nothing
+      if (!userPotentialGame) {
+        db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?, ?)`).run(
+          steamID,
+          `${gameID}`
+        );
+      }
+    } else {
+      // Case if the game is not located in the database
+      // We query game and add it to the Games table along with the users personal table
       tags = await fetchTags(gameID);
-      [genre, initial_price, final_price] = await fetchGenresPrices(gameID);
+      let temp = await fetchGenresPrices(gameID);
+      genre = temp[0];
+      initial_price = temp[1];
+      final_price = temp[2];
+      let is_multiplayer = 1;
       let age = generateDate();
 
-      //
+      // If its single player
+      if (!genre.includes(`Multi-player`)) {
+        is_multiplayer = 0;
+      }
+
+      console.log(gameID);
       db.prepare(
-        `INSERT INTO Games (gameID, name, genre, tags, age, price, initial_price, is_multiplayer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url) VALUES (?,?,?,?,?,?,?,?,?,?)`
       ).run(
         `${gameID}`,
         gameName,
@@ -574,7 +606,14 @@ app.get("/altTest", async (req, res) => {
         age,
         final_price,
         initial_price,
-        `1`
+        `${is_multiplayer}`,
+        gamePic,
+        gameURL
+      );
+
+      db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
+        steamID,
+        `${gameID}`
       );
     }
   }
