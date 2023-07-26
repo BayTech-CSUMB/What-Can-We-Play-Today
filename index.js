@@ -87,7 +87,8 @@ async function fetchGenresPrices(gameID) {
   // DEBUG: Check Output
   // console.log(result2);
 
-  if (result2[`${gameID}`].success == true) { // ensures no de-listed games
+  if (result2[`${gameID}`].success == true) {
+    // ensures no de-listed games
     // Getting the price of the games
     // TODO: Certain games like GTA V don't even have price_overview but a convoluted layout, so there needs to be more searching for those edge cases.
     let priceOverview = result2[`${gameID}`].data.price_overview;
@@ -121,76 +122,70 @@ function computeDateDiff(dateToCompare) {
   return false; // placeholder return for now.
 }
 
-async function checkGames(steamid) {
-
-  await steamWrapper
-  .getOwnedGames(steamid, null, true)
-  .then((result) => {
-    console.log('Getting game data');
-    gameCount = result.data.count;
-    gameInfo = result.data.games;
-  })
-  .catch(console.error);
-
+async function checkGames(steamID) {
+  // First we'll fetch the list of owned games per the users steamID.
   // An API function that will set gameCount and gameInfo to the total count
   // of a users games and aan array of their games respectively.
+  await steamWrapper
+    .getOwnedGames(steamID, null, true)
+    .then((result) => {
+      gameCount = result.data.count;
+      gameInfo = result.data.games;
+    })
+    .catch(console.error);
 
   // We iterate through the users' games using the data from the above function
-
-  for (let curGame = 0; curGame < gameCount; curGame++){
+  for (let curGame = 0; curGame < gameCount; curGame++) {
     const gameName = gameInfo[curGame].name;
     const gamePic = gameInfo[curGame].url_store_header;
     const gameURL = gameInfo[curGame].url_store;
     const gameID = gameInfo[curGame].appID;
 
     // Variables that are et later with API fetches
-    let tags = '';
-    let genre = '';
-    let final_price = 'Free';
-    let initial_price = 'Free';
+    let tags = "";
+    let genre = "";
+    let final_price = "Free";
+    let initial_price = "Free";
 
     // FIRST we query our database to see if we HAVE the game or not
     const localGame = db
-    .prepare("SELECT * FROM Games WHERE gameID = ?")
-    .get(`${gameID}`);
+      .prepare("SELECT * FROM Games WHERE gameID = ?")
+      .get(`${gameID}`);
 
-    // We then check if the user has games registered in the database
-    const userGames = db
+    // Then check if the user has the local game registered in the database
+    const userPotentialGame = db
       .prepare("SELECT * FROM Users WHERE userID = ? AND gameID = ?")
-      .get([`${steamid}`, `${gameID}`]);
+      .get([`${steamID}`, `${gameID}`]);
 
     // if the game is located we check if the user has the game in their database
-    if(localGame){
-      if (computeDateDiff(localGame.age)){
-        // IFF >= 3 days old then re-query
+    if (localGame) {
+      // IFF >= 3 days old then re-query
+      if (computeDateDiff(localGame.age)) {
+        // TODO:
       }
-
-      // If they don't have the game in their table we add it to their database else do nothing 
-      if(!userGames){
-        db.prepare(
-          `INSERT INTO Users (userID, gameID) VALUES (?, ?)`
-        ).run(
-          steamid,
-          gameID
-        )
+      // If they don't have the game in their table we add it to their database else do nothing
+      if (!userPotentialGame) {
+        db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?, ?)`).run(
+          steamID,
+          `${gameID}`
+        );
       }
     } else {
       // Case if the game is not located in the database
-      // We query game and add it tot the Games table along with the users personal table
-      console.log(`Game data is not in the table, adding it...`);
+      // We query game and add it to the Games table along with the users personal table
       tags = await fetchTags(gameID);
       let temp = await fetchGenresPrices(gameID);
       genre = temp[0];
       initial_price = temp[1];
-      final_price = temp [2];
+      final_price = temp[2];
       let is_multiplayer = 1;
       let age = generateDate();
 
       // If its single player
-      if (!genre.includes(`Multi-player`)){
+      if (!genre.includes(`Multi-player`)) {
         is_multiplayer = 0;
       }
-      
+
       console.log(gameID);
       db.prepare(
         `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url) VALUES (?,?,?,?,?,?,?,?,?,?)`
@@ -207,14 +202,31 @@ async function checkGames(steamid) {
         gameURL
       );
 
-      db.prepare(
-        `INSERT INTO Users (userID, gameID) VALUES (?,?)`
-      ).run(
-        steamid,
+      db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
+        steamID,
         `${gameID}`
       );
     }
   }
+}
+
+/**
+ * Given tags to parse and tags to ignore, builds and maintains an array of tags to return.
+ * @param {String} inputTags are the incoming tags (in this format `FPS,Action,Strategy` etc.)
+ * @param {Array} existingTags are tags that SHOULDN'T BE returned because they were previously added. In a array format.
+ * @returns {Array} toReturn curated tag array.  
+ */
+function maintainTags(inputTags, existingTags) {
+    const splitTags = inputTags.split(',');
+    let toReturn = existingTags;
+
+    splitTags.forEach(tag => {
+        if (!toReturn.includes(tag)) {
+            toReturn.push(tag);
+        }
+    });
+
+    return toReturn;
 }
 
 // ================== ROUTES ==================
@@ -245,112 +257,11 @@ app.get("/auth/steam/authenticate", async (req, res) => {
     res.cookie("steamID", user["steamid"]);
     res.cookie("username", user["username"]);
     res.cookie("avatar", user["avatar"]["medium"]);
-    
-    let steamid = parseInt(user['steamid']);
+
+    let steamid = parseInt(user["steamid"]);
 
     // DEBUG: Checking who is logged in via Backend
     console.log(`${user["username"]} has logged in!`);
-
-    // TODO: Call the API and loop through all of a Users games and add them both to the Users table and the Games table if they're not present already.
-    //      We're doing this so that during later parts of the site we can apply filters and only do DB queries instead of querying the API constantly again.
-
-    //Gets user's games and adds them to database if they are not already there
-
-    // An API function that will set gameCount and gameInfo to the total count
-    // of a users games and aan array of their games respectively.
-
-    
-    /*
-    await steamWrapper
-      .getOwnedGames(steamid, null, true)
-      .then((result) => {
-        gameCount = result.data.count;
-        gameInfo = result.data.games;
-      })
-      .catch(console.error);
-
-      // We iterate through the users' games using the data from the above function
-      for (let curGame = 0; curGame < gameCount; curGame++){
-        console.log(`Checking current game: ${curGame}`)
-        const gameName = gameInfo[curGame].name;
-        const gamePic = gameInfo[curGame].url_store_header;
-        const gameURL = gameInfo[curGame].url_store;
-        const gameID = gameInfo[curGame].appID;
-
-        // Variables that are set later with API fetches
-        let tags = '';
-        let genre = '';
-        let final_price = 'Free';
-        let initial_price = 'Free';
-
-        // FIRST we query our database to see if we HAVE the game or not
-        const localGame = db
-          .prepare("SELECT * FROM Games WHERE gameID = ?")
-          .get(`${gameID}`);
-
-        // We then check if the user has games registered in the database
-        const userGames = db
-          .prepare("SELECT * From Users Where userID = ? AND gameID = ?")
-          .get([`${steamid}`, `${gameID}`]);
-        
-        // if the game is located we check if the user has the game in their database
-        if(localGame){
-          if (computeDateDiff(localGame.age)){
-            //Iff >= 3 days old then re-query
-          }
-          //If they don't have it we add it to their database else do nothing
-          if(!userGames){
-            db.prepare(
-              `INSERT INTO Users (userID, gameID) VALUES (?,?)`
-              .run(
-                steamid,
-                gameID
-              )
-            )
-          }
-        } else {
-          // Case if the game is not located in the database
-          // We query game and add it to the games table along with the users personal table
-
-          tags = await fetchTags(gameID);
-          let temp = await fetchGenresPrices(gameID);
-          genre = temp[0];
-          initial_price = temp[1];
-          final_price = temp [2];
-          let is_multiplayer = 1;
-          let age = generateDate();
-
-          // If its single player
-          if(!tags.includes(`Multi-player`)){
-            is_multiplayer = 0;
-          }
-
-          db.prepare(
-            `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(
-            gameID,
-            gameName,
-            genre,
-            tags,
-            age,
-            final_price,
-            initial_price,
-            is_multiplayer,
-            gamePic,
-            gameURL
-          );
-
-          db.prepare(
-            `INSERT INTO Users (userID, gameID) VALUES (?,?)`
-          ).run(
-            steamid,
-            gameID
-          )
-        }
-
-
-
-      } */
 
     res.render("room-choice");
   } catch (error) {
@@ -401,15 +312,11 @@ app.get("/join-room", async (req, res) => {
 
 app.post("/join-room", (req, res) => {
   let potentialRoomNum = req.body.roomnum;
-  // DEBUG: Check the incoming data and the struct it's being compared to
-  // console.log(`${potentialRoomNum}`);
-  // console.log(existingRooms);
+
   if (existingRooms.includes(potentialRoomNum)) {
-    console.log(`Room FOUND`);
     res.cookie("roomNumber", potentialRoomNum);
     res.render("empty-room", { roomNumber: potentialRoomNum, url: config.url });
   } else {
-    console.log(`Room NOT FOUND`);
     res.render("join-room", { existingRooms: existingRooms });
   }
 });
@@ -449,22 +356,9 @@ app.post("/alt-login", async (req, res) => {
 
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
-
-  // socket.on('query', (option, callback) => {
-  //   const query = db.prepare(`SELECT * FROM Games WHERE tags LIKE ? AND is_multiplayer = 1`).all(`%${option}%`);
-  //   console.log(`${option}`);
-  //     if (query) {
-  //       callback(query);
-  //       console.log(query);
-  //     }
-  //     else{
-  //       callback("NONE");
-  //       console.log("IDK");
-  //     }
-  //   });
-
   // Used to generate room with its members
   socket.on("message", (data) => {
+    // Comes from the front end; number was made in another route (room choice).
     let roomNumber = data.roomNumber;
     socket.join("room-" + roomNumber);
 
@@ -474,7 +368,7 @@ io.on("connection", (socket) => {
       // DEBUG: Checking our Logic
       console.log(`Found Room: ${roomNumber}`);
       let foundMembers = potentialRoom.roomMembers;
-      // IF the USER is ALREADY there DONT update
+      // Quickly loop and check if the USER is ALREADY there DON'T update
       let hasFound = false;
       for (let i = 0; i < foundMembers.length; i++) {
         if (foundMembers[i][0] == data.steamID) {
@@ -496,7 +390,7 @@ io.on("connection", (socket) => {
       socketRooms.push(temp);
     }
 
-    // Refind the room again and set the output of users to the front-end
+    // Re-find the room again and send the output of users to the front-end
     potentialRoom = socketRooms.find((x) => x.roomNumber === roomNumber);
     roomMembers = potentialRoom.roomMembers;
 
@@ -512,7 +406,38 @@ io.on("connection", (socket) => {
   // Sort by amount of time played and then generate shared list
   socket.on("generate", async (data) => {
     const roomNumber = data.roomNumber;
-    const roomMembers = socketRooms.find((x) => x.roomNumber === roomNumber).roomMembers;
+    const roomMembers = socketRooms.find(
+      (x) => x.roomNumber === roomNumber
+    ).roomMembers;
+    socket.join("room-" + roomNumber);
+
+    // Query sets up ONLY multiplayer games & ones for the specific user.
+    let query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1`;
+    // Retrieve the users selected tags & reshape the SQL based on it.
+    // const tagSelection = `FPS`; // DEBUG tags
+    const tagSelection = data.tagSelection;
+    const tagsPresent = !(tagSelection === null || tagSelection.trim() === "");
+    if (tagsPresent) {
+      query += ` AND tags LIKE '%${tagSelection}%'`;
+    }
+
+    const categorySelection = data.categorySelection;
+    const categoryPresent = !(
+      categorySelection === null || categorySelection.trim() === ""
+    );
+    if (categoryPresent) {
+      query += `AND genre LIKE '%${categorySelection}%'`;
+    }
+
+    // TODO: Price filtering has to be numeric instead of just inserting a variable. So modify this to support ranges of prices.
+    const priceSelection = data.priceSelection;
+    const pricePresent = !(
+      priceSelection === null || priceSelection.trim() === ""
+    );
+    if (pricePresent) {
+      query += `AND genre LIKE '%${priceSelection}%'`;
+    }
+
     // Arrays to be sent to the front-end later.
     let sharedGameNames = [];
     let ownedByWho = [];
@@ -520,220 +445,57 @@ io.on("connection", (socket) => {
     let gameLinks = [];
     let gameTags = [];
     let gamePrices = [];
-    let catagories = [];
-    let unique = [];
-    let filteredGames = [];
-
+    let allPotentialTags = []; // for the drop-down
 
     // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
-      // A users total game count & an array of their games. For iterating & that'll be set later.
-      let gameInfo = [];
-      let gameCount = 0;
-      // aka their SteamID.
-      const curMembersID = roomMembers[i][0];
+      const currentUserID = roomMembers[i][0];
+      // Now we retrieve all the users recorded games and we'll loop those.
+      // Query will only retrieve MULTI PLAYER games for the current user.
+      const currentUsersGames = db.prepare(query).all(currentUserID);
 
-      // An API function that will set gameCount and gameInfo to the total count of a users games and an array of their games respectively.
-      await steamWrapper
-        .getOwnedGames(curMembersID, null, true)
-        .then((result) => {
-          gameCount = result.data.count;
-          gameInfo = result.data.games;
-        })
-        .catch(console.error);
-
-      // Now we can iterate through the CURRENT USERS GAMES using the data from the above function.
-      for (let curGame = 0; curGame < gameCount; curGame++) {
-        const gameName = gameInfo[curGame].name;
-        const gamePic = gameInfo[curGame].url_store_header;
-        const gameURL = gameInfo[curGame].url_store;
-        const gameID = gameInfo[curGame].appID;
-        // Variables to be set later with API fetches
-        let tags = ``;
-        let genre = ``;
-        let final_price = `Free`;
-        let initial_price = `Free`;
-
-        // FIRST we query our database to see if we HAVE the game there or not
-        const localGame = db
-          .prepare("SELECT * FROM Games WHERE gameID = ?")
-          .get(`${gameID}`);
-
-        // TODO: Note that some de-listed games will have their prices listed as "free" but maybe we should put it as something else to show users it's de-listed so they don't get their hopes up at a "free" game that isn't actually the correct version?
-        if (localGame) {
-          // First we'll check to see if the game is SINGLE PLAYER and if it is then we'll just fetch some data and proceed.
-          //   0 is Single; 1 is Multi.
-          if (localGame.is_multiplayer == `1`) {
-            if (computeDateDiff(localGame.age)) {
-              // iff >= 3 days old
-              // TODO: Re-query the APIs for data and update the database
-              // TODO: Could also only requery price every 3 days and tags every week to keep the amount of total API queries low.
-            } else {
-              // normal fetch. Game is Multiplayer & less than 3 days old.
-              tags = localGame.tags;
-              catagories.push(tags);
-              genre = localGame.genre;
-              initial_price = localGame.initial_price;
-              final_price = localGame.price;
-
-              const indexOfGame = sharedGameNames.indexOf(gameName);
-              // TODO: Would it be better to use a games ID here? Can a game have the same name as another?
-              if (indexOfGame != -1) {
-                // It IS THERE so curGame append the SteamID to the "current owners"
-                ownedByWho[indexOfGame].push(i);
-              } else {
-                // it IS NOT there so make a new entry with name, image, & link
-                sharedGameNames.push(gameName);
-                gameImages.push(gamePic);
-                gameLinks.push(gameURL);
-                gameTags.push(tags);
-                let prices = [];
-                prices.push(final_price);
-                if (initial_price != "" && initial_price != "Free") {
-                  prices.push(initial_price);
-                }
-                gamePrices.push(prices);
-                // Add the SteamID to a new array and start the appending process
-                let temp = [];
-                temp.push(i);
-                ownedByWho.push(temp);
-              }
-            }
-          }
-        } else {
-          // console.log(`Else: ${gameID}`);
-
-          // Start by gathering detailed tags, categories & pricing from APIs
-          tags = await fetchTags(gameID);
-          catagories.push(tags);
-          let temp = await fetchGenresPrices(gameID);
-          genre = temp[0];
-          initial_price = temp[1];
-          final_price = temp[2];
-          let is_multiplayer = 1;
-          // Then the date of inserting for later "age" testing
-          let age = generateDate();
-          // let demo = `Multi-player,Single-player,Action`;
-
-          if (!tags.includes(`Multi-player`)) {
-            is_multiplayer = 0;
-          }
-          // Insert our new game into our own database.
-
-          // const indexOfGame = sharedGameNames.indexOf(gameName);
+      currentUsersGames.forEach((curGame) => {
           // TODO: Would it be better to use a games ID here? Can a game have the same name as another?
-
-          if (is_multiplayer == 1) {
-            if (indexOfGame != -1) {
-              // It IS THERE so curGame append the SteamID to the "current owners"
-              ownedByWho[indexOfGame].push(i);
-            } else {
-              // it IS NOT there so make a new entry with name, image, & link
-              sharedGameNames.push(gameName);
-              gameImages.push(gamePic);
-              gameLinks.push(gameURL);
-              gameTags.push(tags);
-              let prices = [];
-              prices.push(final_price);
-              if (initial_price != "" && initial_price != "Free") {
-                prices.push(initial_price);
-              }
-              gamePrices.push(prices);
-              // Add the SteamID to a new array and start the appending process
-              let temp = [];
-              temp.push(i);
-              ownedByWho.push(temp);
-            }
+        const indexOfGame = sharedGameNames.indexOf(curGame.name);
+        if (indexOfGame != -1) {
+          // It IS THERE so curGame append the SteamID to the "current owners"
+          ownedByWho[indexOfGame].push(i);
+        } else {
+          // it IS NOT there so make a new entry with name, image, & link
+          sharedGameNames.push(curGame.name);
+          gameImages.push(curGame.header_image);
+          gameLinks.push(curGame.store_url);
+          gameTags.push(curGame.tags);
+          let prices = [];
+          const initial_price = curGame.initial_price; 
+          const final_price = curGame.price;
+          prices.push(final_price);
+          if (initial_price != "" && initial_price != "Free") {
+            prices.push(initial_price);
           }
-          db.prepare(
-            `INSERT INTO Games (gameID, name, genre, tags, age, price, initial_price, is_multiplayer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(
-            `${gameID}`,
-            gameName,
-            genre,
-            tags,
-            age,
-            final_price,
-            initial_price,
-            `${is_multiplayer}`
-          );
+          gamePrices.push(prices);
+          // Add the SteamID to a new array and start the appending process
+          let temp = [];
+          temp.push(i);
+          ownedByWho.push(temp);
+          // Lets process the tags to send to the front end
+        // TODO: We should probably also remove the current (or previously) selected tags so they don't get queried again from the database.
+          allPotentialTags = maintainTags(curGame.tags, allPotentialTags);
         }
-      }
-
-    // Parse through the "massive" list of tags and ensure only unique ones are sent to the front end
-      catagories = catagories.toString().split(",");
-      for (let i = 0; i < catagories.length; i++) {
-        if (!unique.includes(catagories[i])) {
-          unique.push(catagories[i]);
-        }
-      }
-
+      });
     }
 
-    socket.on('query', (option, callback) => {
-      
-      const query = db.prepare(`SELECT * FROM Games WHERE tags LIKE ? AND is_multiplayer = 1`).all(`%${option}%`);
-      console.log(`${option}`);
-      console.log("SHARED" + sharedGameNames);
-      
-        if (query) {
-          for(let i = 0; i < query.length; i++ ){
-            const indexOfGame = sharedGameNames.indexOf(query[i].name);
-            if(sharedGameNames.includes(query[i].name)){
-                // if (indexOfGame != -1) {
-                //   // It IS THERE so curGame append the SteamID to the "current owners"
-                //   ownedByWho[indexOfGame].push(i);
-                // } else {
-                  // it IS NOT there so make a new entry with name, image, & link
-                  sharedGameNames.push(query[i].name);
-                  gameImages.push(query[i].header_image);
-                  gameLinks.push(query[i].store_url);
-                  gameTags.push(query[i].tags);
-                  let prices = [];
-                  prices.push(query[i].price);
-                  if (query[i].initial_price != "" && query[i].initial_price != "Free") {
-                    prices.push(initial_price);
-                  }
-                  gamePrices.push(prices);
-                  // Add the SteamID to a new array and start the appending process
-                  let temp = [];
-                  temp.push(i);
-                  ownedByWho.push(temp);
-                  callback(query);
-                  console.log(query);
-                  filteredGames = [];
-                  // filteredGames.push(query[i].name);
-            }
-          }
-        } else {
-          callback("NONE");
-        }
-        // socket.join("room-" + roomNumber);
-        io.sockets.in("room-" + roomNumber).emit("finalList", {
-          roomMembers: roomMembers,
-          games: sharedGameNames,
-          owners: ownedByWho,
-          images: gameImages,
-          links: gameLinks,
-          tags: gameTags,
-          prices: gamePrices,
-          catagories: unique,
-        });
-        
-      });
-
     // Finally emit the data to all room members.
-    socket.join("room-" + roomNumber);
     io.sockets.in("room-" + roomNumber).emit("finalList", {
       roomMembers: roomMembers,
-      filteredGames: filteredGames,
+      //   filteredGames: filteredGames,
       games: sharedGameNames,
       owners: ownedByWho,
       images: gameImages,
       links: gameLinks,
       tags: gameTags,
       prices: gamePrices,
-      catagories: unique,
+      categories: allPotentialTags,
     });
   });
 });
@@ -744,6 +506,17 @@ app.get("/list", async (req, res) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
+  console.log(`Running Test.`);
+
+  const currentUserID = `76561199516233321`;
+  const tagSelection = `FPS`;
+  const query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1 AND tags LIKE '%${tagSelection}%'`;
+  const currentUsersGames = db.prepare(query).all(currentUserID);
+
+  currentUsersGames.forEach((curGame) => {
+    console.log(curGame.name);
+  });
+
   res.render("test");
 });
 
@@ -794,7 +567,7 @@ app.get("/altTest", async (req, res) => {
       db.prepare(
         `INSERT INTO Games (gameID, name, genre, tags, age, price, initial_price, is_multiplayer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
-        gameID,
+        `${gameID}`,
         gameName,
         genre,
         tags,
