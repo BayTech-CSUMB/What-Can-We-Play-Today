@@ -6,6 +6,8 @@
 <div id = "menuDiv">
 </div>
 <div id="filter"> </div>
+<div id="tempTagButton"></div>
+
 <body onload="sendMessage()">
     <div class="gradient-background">
         <div id="toGrab"></div>
@@ -27,41 +29,62 @@
   const socket = io("<%= url %>");
   socket.on("connection");
 
+  // If Tags are found, provide them a way to "remove" them.
+  // For now, we'll just have a single button to clear and then reload the page.
+  if (sessionStorage.getItem('tagSelection')) {
+    let tempButton = document.createElement("button");
+    tempButton.innerHTML = "Clear Tags";
+
+    tempButton.addEventListener('click', () => {
+        // TODO: Ideally you'd want to just remove tagSelection or modify it based on the specific tag but for now this will work.  
+        sessionStorage.clear(); 
+        window.location.reload();
+    });
+
+    document.querySelector('#tempTagButton').appendChild(tempButton);
+  }
+
   const sendMessage = () => {
     let steamID = Cookies.get("steamID");
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
     let roomNumber = Cookies.get("roomNumber");
+
     function filterBySelected(event){
         const selected = event.target.value;
-        socket.emit('query', selected, (result) => {
-          console.log("CHECKER : " + result.name);
-        });
-      }
+        sessionStorage.setItem('tagSelection', selected);
+        window.location.reload();
+    }
 
+    // Triggers the generation of lists on 
     socket.emit("generate", {
       steamID: steamID,
       username: username,
       avatar: avatar,
       roomNumber: roomNumber,
+      tagSelection: sessionStorage.getItem('tagSelection'),
+      categorySelection: sessionStorage.getItem('categorySelection'),
+      priceSelection: sessionStorage.getItem('priceSelection')
     });
+
     socket.on("finalList", (data) => {
-      let roomMembers = data.roomMembers;
-      let sharedGameNames = data.games;
-      let ownedByWho = data.owners;
-      let gameLinks = data.links;
-      let gameImages = data.images;
-      let gameTags = data.tags;
-      let gamePrices = data.prices;
-      let catagories = data.catagories;
-      let filteredGames = data.filteredGames;
-      
-      console.log("FILTERED NAMES : " + filteredGames);
-      const categoryArray = catagories.map((str) => str.replace(/['"] + /g, ''));
-      console.log(categoryArray);
-      function dropDownMenu(){
+      const roomMembers = data.roomMembers;
+      const sharedGameNames = data.games;
+      const ownedByWho = data.owners;
+      const gameLinks = data.links;
+      const gameImages = data.images;
+      const gameTags = data.tags;
+      const gamePrices = data.prices;
+      const categories = data.categories;
+      const categoryArray = categories.map((str) => str.replace(/['"] + /g, ''));
+
+      function dropDownMenu() {
         const menu = document.createElement("select");
-        // menu.id = "menu";
+
+        // TODO: Make a Select Tag option that won't trigger the tag refreshing feature of the function.
+        // const temp = document.createElement("option");
+        // menu.appendChild(temp);
+
         for (let i = 0; i < categoryArray.length; i++){
           const option = document.createElement("option");
           option.value = categoryArray[i];
@@ -73,10 +96,10 @@
         let menuDiv = document.getElementById("menuDiv");
         menuDiv.appendChild(menu);
 
+        // TODO: Add a button to trigger this instead of "change"
         menu.addEventListener("change", filterBySelected);
       }
 
-      
       dropDownMenu();
 
 
@@ -141,7 +164,7 @@
           if (ownedByWho[i].length != roomMembers.length) {
 
             let users = convertToUser(invertOwners(ownedByWho[i]));
-
+            // TODO: Use actual JS methods to build these items instead of hard coding strings
             recommendDiv.innerHTML += `
                 <div class="gameItem">
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
@@ -179,14 +202,15 @@
 
     function setCats (){
       filter = document.getElementById('filter');
-      filter.innerHTML(`<p>${catagories[1]}</p>`);
+      filter.innerHTML(`<p>${categories[1]}</p>`);
     };
 
     });
   };
 
   let leave = document.getElementById("leave");
-  leave.addEventListener('click', function(){
+  leave.addEventListener('click', function() {
+    sessionStorage.clear();
     window.location.href = "/logout";
   })
 </script>
