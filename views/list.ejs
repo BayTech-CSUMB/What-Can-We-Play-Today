@@ -2,11 +2,27 @@
 <%- include('partials/navbar.ejs') %>
 
 <button id= "leave" style="background-color: red;">LEAVE ROOM</button>
-<p> Filter By Category: </p>
-<div id = "menuDiv">
-</div>
-<div id="filter"> </div>
+<!-- <p> Filter By Category: </p> -->
+<div id = "menuDiv"></div>
+<div id = "menuDiv2"></div>
+
+<!-- <div id = "catSelected"> </div> -->
 <div id="tempTagButton"></div>
+<div id = "catSelected"> </div>
+<div id = "catSelected2"> </div>
+
+<button id = "freeBtn">FREE</button>
+<button id = "underTen">Under $10</button>
+<button id = "underFourty">Under $40</button>
+<!-- <div id = "button"><span id = "span" ></span></div> -->
+
+<button id = "button" class="indivTag">
+   <!-- &times;  -->
+</button>
+<button id = "button2" class="indivTag">
+  <!-- &times;  -->
+</button>
+<!-- <div id = "span"></div> -->
 
 <body onload="sendMessage()">
     <div class="gradient-background">
@@ -44,6 +60,7 @@
     document.querySelector('#tempTagButton').appendChild(tempButton);
   }
 
+// TODO: does everything need to be in sendMessage?
   const sendMessage = () => {
     let steamID = Cookies.get("steamID");
     let username = Cookies.get("username");
@@ -54,6 +71,13 @@
         const selected = event.target.value;
         sessionStorage.setItem('tagSelection', selected);
         window.location.reload();
+    }
+    
+    function filterBySelected2(event){
+        const selected = event.target.value;
+        sessionStorage.setItem('categorySelection', selected);
+        window.location.reload();
+        // console.log(`GENRE: ${selected}`);
     }
 
     // Triggers the generation of lists on 
@@ -77,10 +101,15 @@
       const gamePrices = data.prices;
       const categories = data.categories;
       const categoryArray = categories.map((str) => str.replace(/['"] + /g, ''));
+    //   const genres = data.genres;
 
-      function dropDownMenu() {
+      function dropDownMenu1() {
         const menu = document.createElement("select");
-
+        const title = document.createElement("option");
+        title.disabled = true;
+        title.selected = true;
+        title.textContent = "Select a Category";
+        menu.appendChild(title);
         // TODO: Make a Select Tag option that won't trigger the tag refreshing feature of the function.
         // const temp = document.createElement("option");
         // menu.appendChild(temp);
@@ -88,7 +117,7 @@
         for (let i = 0; i < categoryArray.length; i++){
           const option = document.createElement("option");
           option.value = categoryArray[i];
-          option.setAttribute('name', "optionn");
+          option.setAttribute('name', "option");
           option.textContent = categoryArray[i];
           menu.appendChild(option);
         }
@@ -100,8 +129,99 @@
         menu.addEventListener("change", filterBySelected);
       }
 
-      dropDownMenu();
+      dropDownMenu1();
+      let catDiv = document.getElementById("catSelected");
+      let tagString = sessionStorage.getItem('tagSelection');
+      catDiv.appendChild(document.createTextNode(tagString));
 
+      const button = document.getElementById("button");
+
+      button.textContent = catDiv.textContent + "  \u00D7";
+      // button.className = "indivTag";
+      // span.className = "crossIcon";
+      // span.textContent = "             \u00D7";
+      button.addEventListener('click', () => {
+        // sessionStorage.setItem('tagSelection', );
+        // TODO: for now this clears the ENTIRE session storage, but we want to make sure we only remove specific tags in the future.
+        sessionStorage.clear();
+        window.location.reload();
+      });
+      // const buttonPlace = document.getElementById("button");
+      // buttonPlace.appendChild(button);
+
+      // const spanPlace = document.getElementById("span");
+      // spanPlace.appendChild(span);
+      /*
+      <button class="indivTag">
+        catDiv. <span class="crossIcon"> &times; </span> 
+      </button>
+      */
+
+      function dropDownMenu2() {
+        const menu = document.createElement("select");
+        const title = document.createElement("option");
+        const genreArray = ["Co-op", "Online Co-op","PvP","Online PvP","Cross-Platform Multiplayer",
+                            "Remote Play Together","Shared/Split Screen Co-op","Shared/Split Screen PvP",
+                            "LAN PvP","LAN Co-op"];
+        title.disabled = true;
+        title.selected = true;
+        title.textContent = "Select a Genre";
+        menu.appendChild(title);
+        // TODO: Make a Select Tag option that won't trigger the tag refreshing feature of the function.
+        // const temp = document.createElement("option");
+        // menu.appendChild(temp);
+
+        for (let i = 0; i < genreArray.length; i++){
+          const option = document.createElement("option");
+          option.value = genreArray[i];
+          option.setAttribute('name', "option");
+          option.textContent = genreArray[i];
+          menu.appendChild(option);
+        }
+
+        let menuDiv = document.getElementById("menuDiv2");
+        menuDiv2.appendChild(menu);
+
+        // TODO: Add a button to trigger this instead of "change"
+        menu.addEventListener("change", filterBySelected2);
+      }
+      dropDownMenu2();
+      let catDiv2 = document.getElementById("catSelected2");
+      let tagString2 = sessionStorage.getItem('categorySelection');
+      catDiv2.appendChild(document.createTextNode(tagString2));
+
+      const button2 = document.getElementById("button2");
+
+      button2.textContent = catDiv2.textContent + "  \u00D7";
+      // button.className = "indivTag";
+      // span.className = "crossIcon";
+      // span.textContent = "             \u00D7";
+      button2.addEventListener('click', () => {
+        // sessionStorage.setItem('tagSelection', );
+        // TODO: for now this clears the ENTIRE session storage, but we want to make sure we only remove specific tags in the future.
+        sessionStorage.clear();
+        window.location.reload();
+      });
+
+      //EVENT LISTENERS FOR PRICE FILTERS 
+      const freeButton = document.getElementById("freeBtn");
+      freeButton.addEventListener('click', () => {
+
+        sessionStorage.setItem('priceSelection', freeButton.textContent);
+        window.location.reload();
+      });
+
+      const underTen = document.getElementById("underTen");
+      underTen.addEventListener('click', () => {
+        sessionStorage.setItem('priceSelection', underTen.textContent);
+        window.location.reload();
+      });
+
+      const underFourty = document.getElementById("underFourty");
+      underFourty.addEventListener('click', () => {
+        sessionStorage.setItem('priceSelection', underFourty.textContent);
+        window.location.reload();
+      });
 
       function invertOwners(someArr) {
         let temp = [];
@@ -199,11 +319,6 @@
           }
         }
       }
-
-    function setCats (){
-      filter = document.getElementById('filter');
-      filter.innerHTML(`<p>${categories[1]}</p>`);
-    };
 
     });
   };
