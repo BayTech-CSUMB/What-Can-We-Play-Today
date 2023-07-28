@@ -80,8 +80,8 @@ async function fetchGenresPrices(gameID) {
   const steamURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}&l=en`;
   const response2 = await fetch(steamURL);
   const result2 = await response2.json();
-  let initial_price = `Free`;
-  let final_price = `Free`;
+  let initial_price = 0;
+  let final_price = 0;
   let genre = ``;
 
   // DEBUG: Check Output
@@ -93,9 +93,10 @@ async function fetchGenresPrices(gameID) {
     // TODO: Certain games like GTA V don't even have price_overview but a convoluted layout, so there needs to be more searching for those edge cases.
     let priceOverview = result2[`${gameID}`].data.price_overview;
     if (typeof priceOverview != `undefined`) {
-      //   if (!result2[`${gameID}`].data.is_free) {
       final_price = priceOverview.final_formatted; // final
       initial_price = priceOverview.initial_formatted; // initial
+      final_price = parseFloat(final_price.replace("$",""));
+      initial_price = parseFloat(initial_price.replace("$",""));
     }
     // Getting the "categories" of the game
     let categories = result2[`${gameID}`].data.categories;
@@ -108,8 +109,8 @@ async function fetchGenresPrices(gameID) {
     }
   } else {
     genre = `Single-player`;
-    initial_price = `Free`;
-    final_price = `Free`;
+    initial_price = 0;
+    final_price = 0;
   }
 
   return [genre, initial_price, final_price];
@@ -126,6 +127,7 @@ async function checkGames(steamID) {
   // First we'll fetch the list of owned games per the users steamID.
   // An API function that will set gameCount and gameInfo to the total count
   // of a users games and aan array of their games respectively.
+  console.log("Gathering data...");
   await steamWrapper
     .getOwnedGames(steamID, null, true)
     .then((result) => {
@@ -133,6 +135,7 @@ async function checkGames(steamID) {
       gameInfo = result.data.games;
     })
     .catch(console.error);
+  console.log("Finished");
 
   // We iterate through the users' games using the data from the above function
   for (let curGame = 0; curGame < gameCount; curGame++) {
@@ -141,11 +144,13 @@ async function checkGames(steamID) {
     const gameURL = gameInfo[curGame].url_store;
     const gameID = gameInfo[curGame].appID;
 
+    console.log(`GAME: ${gameName}`);
+
     // Variables that are et later with API fetches
     let tags = "";
     let genre = "";
-    let final_price = "Free";
-    let initial_price = "Free";
+    let final_price = 0;
+    let initial_price = 0;
 
     // FIRST we query our database to see if we HAVE the game or not
     const localGame = db
@@ -159,6 +164,7 @@ async function checkGames(steamID) {
 
     // if the game is located we check if the user has the game in their database
     if (localGame) {
+      console.log(`Game-${gameName} is inside database...`);
       // IFF >= 3 days old then re-query
       if (computeDateDiff(localGame.age)) {
         // TODO:
@@ -186,7 +192,7 @@ async function checkGames(steamID) {
         is_multiplayer = 0;
       }
 
-      console.log(gameID);
+      console.log(`Added ${gameName} - ${gameID}!`);
       db.prepare(
         `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url) VALUES (?,?,?,?,?,?,?,?,?,?)`
       ).run(
@@ -409,8 +415,7 @@ io.on("connection", (socket) => {
     const roomMembers = socketRooms.find(
       (x) => x.roomNumber === roomNumber
     ).roomMembers;
-    socket.join("room-" + roomNumber);
-
+    // socket.join("room-" + roomNumber);
     // Query sets up ONLY multiplayer games & ones for the specific user.
     let query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1`;
     // Retrieve the users selected tags & reshape the SQL based on it.
@@ -426,7 +431,7 @@ io.on("connection", (socket) => {
       categorySelection === null || categorySelection.trim() === ""
     );
     if (categoryPresent) {
-      query += `AND genre LIKE '%${categorySelection}%'`;
+      query += ` AND genre LIKE '%${categorySelection}%'`;
     }
 
     // TODO: Price filtering has to be numeric instead of just inserting a variable. So modify this to support ranges of prices.
@@ -435,7 +440,16 @@ io.on("connection", (socket) => {
       priceSelection === null || priceSelection.trim() === ""
     );
     if (pricePresent) {
-      query += `AND genre LIKE '%${priceSelection}%'`;
+        // TODO: Depending on certain prices, do something.
+        if (priceSelection == `FREE`) {
+            query += ` AND price = 0`;
+        } else if (priceSelection == `Under $10`) {
+            query += ` AND price <= 10`;
+        } else if (priceSelection == `Under $40`) {
+            query += ` AND price <= 40`;
+        } else {
+            // TODO: Custom prices are processed here.
+        }
     }
 
     // Arrays to be sent to the front-end later.
@@ -446,6 +460,9 @@ io.on("connection", (socket) => {
     let gameTags = [];
     let gamePrices = [];
     let allPotentialTags = []; // for the drop-down
+
+    // DEBUG: Ensure the query we want is exactly that.
+    // console.log(query);
 
     // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
@@ -470,7 +487,8 @@ io.on("connection", (socket) => {
           const initial_price = curGame.initial_price; 
           const final_price = curGame.price;
           prices.push(final_price);
-          if (initial_price != "" && initial_price != "Free") {
+          if (initial_price != "" && initial_price != 0) {
+        //   if (initial_price != "" && initial_price != "Free") {
             prices.push(initial_price);
           }
           gamePrices.push(prices);
@@ -485,13 +503,10 @@ io.on("connection", (socket) => {
       });
     }
 
-    
-    // TODO: Emits need to be ONLY for the specific user at this point. Only on certain occasions (like when a new user joins or leaves) will a wide emit be needed.
-    
-    // Finally emit the data to all room members.
-    io.sockets.in("room-" + roomNumber).emit("finalList", {
+    // TODO: How to handle refreshes when a new user joins or leaves a room?
+    // Finally emit the data to all room members INDIVIDUALLY so filtering options don't change the page for everyone.
+    io.to(socket.id).emit("finalList", {
       roomMembers: roomMembers,
-      //   filteredGames: filteredGames,
       games: sharedGameNames,
       owners: ownedByWho,
       images: gameImages,
@@ -510,16 +525,6 @@ app.get("/list", async (req, res) => {
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
   console.log(`Running Test.`);
-
-  const currentUserID = `76561199516233321`;
-  const tagSelection = `FPS`;
-  const query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1 AND tags LIKE '%${tagSelection}%'`;
-  const currentUsersGames = db.prepare(query).all(currentUserID);
-
-  currentUsersGames.forEach((curGame) => {
-    console.log(curGame.name);
-  });
-
   res.render("test");
 });
 
@@ -530,7 +535,6 @@ app.get("/altTest", async (req, res) => {
   let gameInfo = [];
   let gameCount = 0;
   // Set this to whomever's account to pre-add their games to the database
-  const steamID = `76561198016716226`;
 
   // An API function that will set gameCount and gameInfo to the total count of a users games and an array of their games respectively.
   await steamWrapper
@@ -553,8 +557,8 @@ app.get("/altTest", async (req, res) => {
     // Variables that are et later with API fetches
     let tags = "";
     let genre = "";
-    let final_price = "Free";
-    let initial_price = "Free";
+    let final_price = 0;
+    let initial_price = 0;
 
     // FIRST we query our database to see if we HAVE the game or not
     const localGame = db
