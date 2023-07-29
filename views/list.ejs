@@ -18,7 +18,8 @@
 <label for = "inputPrice"> Enter Price Range:</label>
 <input type = "text" id = "inputPrice" placeholder = "Min $">
 <input type = "text" id = "inputPriceMax" placeholder = "Max $">
-<button id = "displayPriceRange"> Filter Price </button>
+
+<button id = "displayPriceRange" class = "roomButtonText" > Filter Price </button>
 
 <button id = "button" class="indivTag">
    <!-- &times;  -->
@@ -33,6 +34,7 @@
         <div id="toGrab"></div>
         <hr />
         <div id="recGames"></div>
+
         <!-- TODO: Put Room Members to the side of games -->
         <!-- <div id="roomMembers">
             <h6> MEMBERS </h6>
@@ -238,6 +240,8 @@
         sessionStorage.setItem('priceSelection', underFourty.textContent);
         window.location.reload();
       });
+
+
       const priceRange = document.getElementById("displayPriceRange");
       priceRange.addEventListener('click', () => {
       const userInputMin = document.getElementById("inputPrice").value;
@@ -245,10 +249,19 @@
       console.log("MIN INPUT:" + userInputMin);
       console.log("MAX INPUT: " + userInputMax);
 
+      if(userInputMin > userInputMax || userInputMin == "" || userInputMax == ""){
+        jSuites.notification({
+            name: 'INVALID RANGE',
+        });
+      }
+      else{
       sessionStorage.setItem('minPriceSelection', userInputMin);
       sessionStorage.setItem('maxPriceSelection', userInputMax);
       window.location.reload();
+      }
+
       });
+
 
       function invertOwners(someArr) {
         let temp = [];
