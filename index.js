@@ -452,6 +452,12 @@ io.on("connection", (socket) => {
         }
     }
 
+    const minPriceSelection = data.minPriceSelection;
+    const maxPriceSelection = data.maxPriceSelection; 
+    if(minPriceSelection != null && maxPriceSelection != null){
+      query += ` AND price >= ${minPriceSelection} AND price <= ${maxPriceSelection}`;
+    }
+
     // Arrays to be sent to the front-end later.
     let sharedGameNames = [];
     let ownedByWho = [];

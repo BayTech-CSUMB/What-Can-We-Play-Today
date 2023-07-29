@@ -39,3 +39,21 @@
         </button>
     </div>
 </div>
+
+<label for = "inputPrice"> Enter Price Range:</label>
+<input type = "text" id = "inputPrice" placeholder = "Min $">
+<input type = "text" id = "inputPriceMax" placeholder = "Max $">
+<button onclick = "displayPriceRange()"> Filter Price </button>
+
+<script> 
+function displayPriceRange(){
+    const userInputMin = document.getElementById("inputPrice").value;
+    const userInputMax = document.getElementById("inputPriceMax").value;
+    console.log("MIN INPUT:" + userInputMin);
+    console.log("MAX INPUT: " + userInputMax);
+
+    sessionStorage.setItem('minPriceSelection', userInputMin);
+    sessionStorage.setItem('maxPriceSelection', userInputMax);
+     window.location.reload();
+}
+</script>

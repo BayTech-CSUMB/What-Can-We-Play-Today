@@ -15,6 +15,10 @@
 <button id = "underTen">Under $10</button>
 <button id = "underFourty">Under $40</button>
 <!-- <div id = "button"><span id = "span" ></span></div> -->
+<label for = "inputPrice"> Enter Price Range:</label>
+<input type = "text" id = "inputPrice" placeholder = "Min $">
+<input type = "text" id = "inputPriceMax" placeholder = "Max $">
+<button id = "displayPriceRange"> Filter Price </button>
 
 <button id = "button" class="indivTag">
    <!-- &times;  -->
@@ -79,6 +83,16 @@
         window.location.reload();
         // console.log(`GENRE: ${selected}`);
     }
+    function displayPriceRange(){
+    const userInputMin = document.getElementById("inputPrice").value;
+    const userInputMax = document.getElementById("inputPriceMax").value;
+    console.log("MIN INPUT:" + userInputMin);
+    console.log("MAX INPUT: " + userInputMax);
+
+    sessionStorage.setItem('minPriceSelection', userInputMin);
+    sessionStorage.setItem('maxPriceSelection', userInputMax);
+     window.location.reload();
+    }
 
     // Triggers the generation of lists on 
     socket.emit("generate", {
@@ -88,7 +102,9 @@
       roomNumber: roomNumber,
       tagSelection: sessionStorage.getItem('tagSelection'),
       categorySelection: sessionStorage.getItem('categorySelection'),
-      priceSelection: sessionStorage.getItem('priceSelection')
+      priceSelection: sessionStorage.getItem('priceSelection'),
+      minPriceSelection: sessionStorage.getItem('minPriceSelection'),
+      maxPriceSelection: sessionStorage.getItem('maxPriceSelection')
     });
 
     socket.on("finalList", (data) => {
@@ -221,6 +237,17 @@
       underFourty.addEventListener('click', () => {
         sessionStorage.setItem('priceSelection', underFourty.textContent);
         window.location.reload();
+      });
+      const priceRange = document.getElementById("displayPriceRange");
+      priceRange.addEventListener('click', () => {
+      const userInputMin = document.getElementById("inputPrice").value;
+      const userInputMax = document.getElementById("inputPriceMax").value;
+      console.log("MIN INPUT:" + userInputMin);
+      console.log("MAX INPUT: " + userInputMax);
+
+      sessionStorage.setItem('minPriceSelection', userInputMin);
+      sessionStorage.setItem('maxPriceSelection', userInputMax);
+      window.location.reload();
       });
 
       function invertOwners(someArr) {
