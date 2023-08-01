@@ -127,7 +127,6 @@ async function checkGames(steamID) {
   // First we'll fetch the list of owned games per the users steamID.
   // An API function that will set gameCount and gameInfo to the total count
   // of a users games and aan array of their games respectively.
-  console.log("Gathering data...");
   await steamWrapper
     .getOwnedGames(steamID, null, true)
     .then((result) => {
@@ -135,7 +134,6 @@ async function checkGames(steamID) {
       gameInfo = result.data.games;
     })
     .catch(console.error);
-  console.log("Finished");
 
   // We iterate through the users' games using the data from the above function
   for (let curGame = 0; curGame < gameCount; curGame++) {
@@ -143,8 +141,6 @@ async function checkGames(steamID) {
     const gamePic = gameInfo[curGame].url_store_header;
     const gameURL = gameInfo[curGame].url_store;
     const gameID = gameInfo[curGame].appID;
-
-    console.log(`GAME: ${gameName}`);
 
     // Variables that are et later with API fetches
     let tags = "";
@@ -164,7 +160,6 @@ async function checkGames(steamID) {
 
     // if the game is located we check if the user has the game in their database
     if (localGame) {
-      console.log(`Game-${gameName} is inside database...`);
       // IFF >= 3 days old then re-query
       if (computeDateDiff(localGame.age)) {
         // TODO:
@@ -263,8 +258,6 @@ app.get("/auth/steam/authenticate", async (req, res) => {
     res.cookie("steamID", user["steamid"]);
     res.cookie("username", user["username"]);
     res.cookie("avatar", user["avatar"]["medium"]);
-
-    let steamid = parseInt(user["steamid"]);
 
     // DEBUG: Checking who is logged in via Backend
     console.log(`${user["username"]} has logged in!`);
@@ -436,21 +429,25 @@ io.on("connection", (socket) => {
 
     // TODO: Price filtering has to be numeric instead of just inserting a variable. So modify this to support ranges of prices.
     const priceSelection = data.priceSelection;
-    const pricePresent = !(
-      priceSelection === null || priceSelection.trim() === ""
-    );
-    if (pricePresent) {
-        // TODO: Depending on certain prices, do something.
-        if (priceSelection == `FREE`) {
-            query += ` AND price = 0`;
-        } else if (priceSelection == `Under $10`) {
-            query += ` AND price <= 10`;
-        } else if (priceSelection == `Under $40`) {
-            query += ` AND price <= 40`;
-        } else {
-            // TODO: Custom prices are processed here.
-        }
+    const minPriceSelection = data.minPriceSelection;
+    const maxPriceSelection = data.maxPriceSelection; 
+    // DEBUG: Ensure proper data.
+    // console.log(`MIN: ${minPriceSelection}`);
+    // console.log(`MAX: ${maxPriceSelection}`);
+    // console.log(`PS: ${priceSelection}`);
+ 
+    if (priceSelection == `FREE`) {
+        query += ` AND price = 0`;
+    } else if (priceSelection == `Under $10`) {
+        query += ` AND price <= 10`;
+    } else if (priceSelection == `Under $40`) {
+        query += ` AND price <= 40`;
+    } else if (!(minPriceSelection == '' && maxPriceSelection == '')) {
+        query += ` AND price >= ${minPriceSelection} AND price <= ${maxPriceSelection}`;
     }
+
+    // DEBUG: Ensuring our query is correct.
+    console.log("QUERY: " + query);
 
     // Arrays to be sent to the front-end later.
     let sharedGameNames = [];
@@ -488,7 +485,6 @@ io.on("connection", (socket) => {
           const final_price = curGame.price;
           prices.push(final_price);
           if (initial_price != "" && initial_price != 0) {
-        //   if (initial_price != "" && initial_price != "Free") {
             prices.push(initial_price);
           }
           gamePrices.push(prices);
@@ -535,6 +531,7 @@ app.get("/altTest", async (req, res) => {
   let gameInfo = [];
   let gameCount = 0;
   // Set this to whomever's account to pre-add their games to the database
+    let steamID = `76561198016716226`;
 
   // An API function that will set gameCount and gameInfo to the total count of a users games and an array of their games respectively.
   await steamWrapper
@@ -545,7 +542,7 @@ app.get("/altTest", async (req, res) => {
     })
     .catch(console.error);
 
-    // gameCount = ;
+    // gameCount = 600;
 
   // We iterate through the users' games using the data from the above function
   for (let curGame = 0; curGame < gameCount; curGame++) {

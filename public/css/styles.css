@@ -22,6 +22,18 @@ h1, h2, a, p, label {
     box-shadow: 0 3px 7px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 }
 
+.background-box-pp {
+    margin-top: 6vh;
+    max-width: 70vw; /* Increase the maximum width */
+    display: inline-flex;
+    flex-direction: column;
+    background-color: #171A21;
+    text-align: left;
+    padding: 5vh; /* Reduce the padding */
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+}
+
+
 /* The light blue fade gradient on most pages. */
 .gradient-background {
     background-image: linear-gradient(90deg,
@@ -284,6 +296,72 @@ ul, li {
     font-size: 1.5rem;
 }
 
+/* ===================== General List ===================== */
+
 #listPageLayout {
-    
+    display: flex;
+}
+
+#leftHandList {
+    flex: 2;
+}
+
+#rightHandList {
+    flex: 2;
+}
+
+#centerList {
+    display: flex;
+    flex-direction: column;
+    flex: 6;
+}
+
+#roomCodeList {
+    text-decoration: underline;
+}
+
+#recGamesList, #toGrabList {
+    color: #E6E6E6;
+    text-decoration: underline;
+}
+
+#priceItems {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#priceItems button {
+    max-width: 8vw;
+    border: 1px white solid;
+    border-radius: 8px;
+    background-color: transparent;
+    padding: 0.1vh 0.5vw;
+    font-size: 1.25rem;
+    margin-bottom: 1vh;
+}
+
+#customPriceElements {
+    display: flex;
+    flex-direction: row;
+    max-height: 4vh;
+    max-width: 6vw;
+    justify-content: center;
+}
+
+#customPriceElements input {
+    max-width: 6vw;
+}
+
+#customPriceElements button {
+    max-width: 5vw;
+    max-height: 4vh;
+    margin-bottom: 0;
+}
+
+.leftHandLabels {
+    color: #B1B1B1;
+    margin-top: 8vh;
+    text-decoration: underline;
+    font-size: 1.2rem;
 }
