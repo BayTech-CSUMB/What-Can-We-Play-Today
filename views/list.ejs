@@ -26,11 +26,10 @@
                 <div id="customPriceElements">
                     <input type="number" id="inputPrice" placeholder="Min $">
                     <input type="number" id="inputPriceMax" placeholder="Max $">
-                    <!-- <input type="text" id="inputPrice" placeholder="Min $">
-                    <input type="text" id="inputPriceMax" placeholder="Max $"> -->
                     <button id="displayPriceRange" class="roomButtonText"> GO </button>
-                    <div hidden id="pricePopupButton"> </div>
                 </div>
+                <button id="button3" class="indivTag"></button>      
+                <div hidden id="pricePopupButton"> </div>
             </div>
             <div id="clearAllFiltersButton"></div>
         </div>
@@ -40,22 +39,21 @@
                 <h1 id="toGrabList"> SHARED GAMES </h1>
                 <div id="toGrab"></div>
                 <!-- TODO: Style this to be larger. -->
-                <img class="roomSeperator" src="/img/controllerSeparator.png" alt="Seperator for Page">
+                <img class="roomSeperator" src="/img/controllerSeparator.png" alt="Separator for Page">
                 <h1 id="recGamesList"> RECOMMENDED GAMES </h1>
                 <div id="recGames"></div>
             </div>
         </div>
 
         <div id="rightHandList">
-            <!-- TODO: Put Room Members to the side of games -->
-                <!-- <div id="roomMembers">
-                    <h6> MEMBERS </h6>
-                </div> -->
+            <div id="roomMembersList">
+                <p class="leftHandLabels"> MEMBERS </p>
+            </div>
             <p id="roomCodeList"> ROOM CODE </p>
             <!-- TODO: Placeholder Number -->
             <p id = "displayRoomNum"> </p>
             <!-- TODO: Button for copying Room Code -->
-            <button id= "leave" style="background-color: red;">LEAVE ROOM</button>
+            <button id= "leave" style="background-color: red;"> Logout & Leave Room </button>
         </div>
     </div>
 </body>
@@ -68,6 +66,7 @@
   // For now, we'll just have a single button to clear and then reload the page.
   if (sessionStorage.getItem('tagSelection') || sessionStorage.getItem('categorySelection') || sessionStorage.getItem('priceSelection') || sessionStorage.getItem('minPriceSelection') || sessionStorage.getItem('maxPriceSelection')) {
     let tempButton = document.createElement("button");
+    tempButton.setAttribute('id', 'filterClearButton');
     tempButton.innerHTML = "Clear Filters";
 
     tempButton.addEventListener('click', () => {
@@ -90,6 +89,7 @@
     let avatar = Cookies.get("avatar");
     let roomNumber = Cookies.get("roomNumber");
 
+
     function filterBySelected(event) {
         const selected = event.target.value;
         sessionStorage.setItem('tagSelection', selected);
@@ -100,7 +100,6 @@
         const selected = event.target.value;
         sessionStorage.setItem('categorySelection', selected);
         window.location.reload();
-        // console.log(`GENRE: ${selected}`);
     }
 
     function displayPriceRange() {
@@ -138,6 +137,16 @@
       const categories = data.categories;
       const categoryArray = categories.map((str) => str.replace(/['"] + /g, ''));
 
+    //   console.log(roomMembers);
+        const roomMembersToAppend = document.querySelector('#roomMembersList');
+        for (let i = 0; i < roomMembers.length; i++) {
+            const userAvatar = document.createElement('img');
+            userAvatar.src = roomMembers[i][2];
+            userAvatar.alt = `Icon for ${roomMembers[i][1]}`;
+            roomMembersToAppend.appendChild(userAvatar);
+        }
+
+        // console.log(roomMembers.length);
     // Quickly set our room number to the page.
       let currentRoomNum = document.getElementById('displayRoomNum');
       currentRoomNum.textContent = roomNumber;
@@ -270,9 +279,11 @@
       // TODO: Dollar signs on text fields. 
       const priceRange = document.getElementById("displayPriceRange");
       priceRange.addEventListener('click', () => {
-        const userInputMin = document.getElementById("inputPrice").value;
-        const userInputMax = document.getElementById("inputPriceMax").value;
+        let userInputMin = document.getElementById("inputPrice").value;
+        let userInputMax = document.getElementById("inputPriceMax").value;
 
+        userInputMin = parseFloat(userInputMin).toFixed(2);
+        userInputMax = parseFloat(userInputMax).toFixed(2);
 
         if (userInputMin > userInputMax || userInputMin == "" || userInputMax == "" || userInputMin < 0 || userInputMax < 0) {
             jSuites.notification({
@@ -283,6 +294,26 @@
             sessionStorage.setItem('maxPriceSelection', userInputMax);
             window.location.reload();
         }
+      });
+
+      //Display tag of user's input for price range
+      let priceDiv = document.getElementById("pricePopupButton");
+      let priceString1 = sessionStorage.getItem('minPriceSelection');
+      let priceString2 = sessionStorage.getItem('maxPriceSelection');
+
+
+      const button3 = document.getElementById("button3");
+
+      if (priceString1 === "" || priceString2 === "") {
+        button3.style.display = "none";
+      } else {
+        button3.textContent = "$" + priceString1 + " - $" + priceString2 + " \u00D7";
+      }
+      
+      button3.addEventListener('click', () => {
+        sessionStorage.setItem('minPriceSelection', '');
+        sessionStorage.setItem('maxPriceSelection', '');
+        window.location.reload();
       });
 
       function invertOwners(someArr) {
