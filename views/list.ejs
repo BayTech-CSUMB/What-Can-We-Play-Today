@@ -53,15 +53,26 @@
             <!-- TODO: Placeholder Number -->
             <p id = "displayRoomNum"> </p>
             <!-- TODO: Button for copying Room Code -->
-            <button id= "leave" style="background-color: red;"> Logout & Leave Room </button>
+            <button id= "logout" style="background-color: red;"> Logout & Leave Room </button> <br> <br>
+            <button id= "leave" style="background-color: red;"> Leave Room </button>
         </div>
     </div>
 </body>
 
 <script>
+  console.log("CHECKING" + parseInt(localStorage.getItem('buttonClicked')) || 0);
+
+      console.log("CLICKED P" + '<%= buttonClicked %>');
+      localStorage.setItem('buttonClicked', 0);
+
+      
+      console.log("CHECKING AFTER" + parseInt(localStorage.getItem('buttonClicked')) || 0);
+
   const socket = io("<%= url %>");
   socket.on("connection");
-
+  socket.on('refreshList', () =>  {
+        window.location.reload();
+    });
   // If Tags are found, provide them a way to "remove" them.
   // For now, we'll just have a single button to clear and then reload the page.
   if (sessionStorage.getItem('tagSelection') || sessionStorage.getItem('categorySelection') || sessionStorage.getItem('priceSelection') || sessionStorage.getItem('minPriceSelection') || sessionStorage.getItem('maxPriceSelection')) {
@@ -84,6 +95,7 @@
 
 // TODO: does everything need to be in sendMessage?
   const sendMessage = () => {
+
     let steamID = Cookies.get("steamID");
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
@@ -112,7 +124,7 @@
         sessionStorage.setItem('maxPriceSelection', userInputMax);
         window.location.reload();
     }
-
+    
     // Triggers the generation of lists on 
     socket.emit("generate", {
       steamID: steamID,
@@ -123,8 +135,9 @@
       categorySelection: sessionStorage.getItem('categorySelection'),
       priceSelection: sessionStorage.getItem('priceSelection'),
       minPriceSelection: sessionStorage.getItem('minPriceSelection'),
-      maxPriceSelection: sessionStorage.getItem('maxPriceSelection')
+      maxPriceSelection: sessionStorage.getItem('maxPriceSelection'),
     });
+
 
     socket.on("finalList", (data) => {
       const roomMembers = data.roomMembers;
@@ -136,8 +149,8 @@
       const gamePrices = data.prices;
       const categories = data.categories;
       const categoryArray = categories.map((str) => str.replace(/['"] + /g, ''));
-
-    //   console.log(roomMembers);
+      console.log("ROOM MEMBERS" + roomMembers.length);
+      //   console.log(roomMembers);
         const roomMembersToAppend = document.querySelector('#roomMembersList');
         for (let i = 0; i < roomMembers.length; i++) {
             const userAvatar = document.createElement('img');
@@ -145,9 +158,8 @@
             userAvatar.alt = `Icon for ${roomMembers[i][1]}`;
             roomMembersToAppend.appendChild(userAvatar);
         }
-
         // console.log(roomMembers.length);
-    // Quickly set our room number to the page.
+      // Quickly set our room number to the page.
       let currentRoomNum = document.getElementById('displayRoomNum');
       currentRoomNum.textContent = roomNumber;
 
@@ -254,7 +266,7 @@
         window.location.reload();
       });
 
-    // Depending on our selected price we'll change the button styling to a different color.
+      // Depending on our selected price we'll change the button styling to a different color.
       if (sessionStorage.getItem('priceSelection') == "FREE") {
         freeButton.style.color = "#B3EE11";
         freeButton.style.borderColor = "#B3EE11";
@@ -380,11 +392,10 @@
       ) {
         for (let i = 0; i < sharedGameNames.length; i++) {
             // IF the game is NOT owned by everyone, do the top case.
+          
           let tempTag = buildTags(gameTags[i]);
           let tempPrice = buildPrices(gamePrices[i]);
-
           if (ownedByWho[i].length != roomMembers.length) {
-
             let users = convertToUser(invertOwners(ownedByWho[i]));
             // TODO: Use actual JS methods to build these items instead of hard coding strings
             recommendDiv.innerHTML += `
@@ -421,13 +432,26 @@
           }
         }
       }
-
     });
   };
 
-  let leave = document.getElementById("leave");
-  leave.addEventListener('click', function() {
+
+  // let buttonClicked = parseInt(localStorage.getItem('buttonClicked')) || 0;
+  // console.log("BUTTON CLICKED", buttonClicked);
+  //     if(buttonClicked > 1){
+  //       window.location.reload();
+  //     )
+
+  // socket.emit('reload', {roomNumber: Cookies.get("roomNumber")});
+  let logout = document.getElementById("logout");
+  logout.addEventListener('click', function() {
     sessionStorage.clear();
     window.location.href = "/logout";
-  })
+  });
+
+  let leave = document.getElementById('leave');
+  leave.addEventListener('click', function() {
+    sessionStorage.clear();
+    window.location.href = "/leave";
+  });
 </script>

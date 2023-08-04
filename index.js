@@ -361,15 +361,15 @@ app.get("/join-room", async (req, res) => {
   await checkGames(req.cookies.steamID);
   res.render("join-room", { existingRooms: existingRooms });
 });
-
+let buttonClicked = 0;
 app.post("/join-room", (req, res) => {
   let potentialRoomNum = req.body.roomnum;
 
   if (existingRooms.includes(potentialRoomNum)) {
     res.cookie("roomNumber", potentialRoomNum);
-    res.render("empty-room", { roomNumber: potentialRoomNum, url: config.url });
+    res.render("empty-room", { roomNumber: potentialRoomNum, url: config.url, buttonClicked: buttonClicked});
   } else {
-    res.render("join-room", { existingRooms: existingRooms });
+    res.render("join-room", { existingRooms: existingRooms, buttonClicked: buttonClicked});
   }
 });
 
@@ -379,7 +379,7 @@ app.get("/empty-room", async (req, res) => {
   // console.log(req.cookies);
   res.render("empty-room", {
     roomNumber: req.cookies.roomNumber,
-    url: config.url,
+    url: config.url, buttonClicked: buttonClicked
   });
 });
 
@@ -405,10 +405,12 @@ app.post("/alt-login", async (req, res) => {
     console.log("Could not fetch information...");
   }
 });
-
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
   // Used to generate room with its members
+  socket.on('generateList', () => {
+    io.emit('refreshList');
+  });
   socket.on("message", (data) => {
     // Comes from the front end; number was made in another route (room choice).
     let roomNumber = data.roomNumber;
@@ -458,17 +460,20 @@ io.on("connection", (socket) => {
 
   // MAIN WORKHORSE FUNCTION. Gathers the SteamIDs of the room members and uses them to generate the massive list of shared games.
   // Sort by amount of time played and then generate shared list
+  // let memberCount = 0;
   socket.on("generate", async (data) => {
     const roomNumber = data.roomNumber;
     const roomMembers = socketRooms.find(
       (x) => x.roomNumber === roomNumber
     ).roomMembers;
 
-    const roomSize = socketRooms.find(
-      (x) => x.roomNumber === roomNumber
-    ).roomSize;
+    // memberCount = Object.keys(roomMembers).length;
+    // console.log("MEMBERS" + memberCount)
+    // const roomSize = socketRooms.find(
+    //   (x) => x.roomNumber === roomNumber
+    // ).roomSize;
     // socket.join("room-" + roomNumber);
-    console.log("ROOM SIZE" + roomSize);
+    // console.log("ROOM SIZE" + roomSize);
     // console.log("ROOM SIZE" + roomSize);
     // Query sets up ONLY multiplayer games & ones for the specific user.
     let query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1`;
@@ -547,11 +552,11 @@ io.on("connection", (socket) => {
           allPotentialTags = maintainTags(curGame.tags, allPotentialTags);
         }
       });
-    }
 
+      socket.join("room-" + data.roomNumber);
+    }
     // TODO: How to handle refreshes when a new user joins or leaves a room?
     // Finally emit the data to all room members INDIVIDUALLY so filtering options don't change the page for everyone.
-    
     io.to(socket.id).emit("finalList", {
       roomMembers: roomMembers,
       games: sharedGameNames,
@@ -561,12 +566,17 @@ io.on("connection", (socket) => {
       tags: gameTags,
       prices: gamePrices,
       categories: allPotentialTags,
+      // memberCount: memberCount,
     });
+    
   });
+
 });
 
 app.get("/list", async (req, res) => {
-  res.render("list", { url: config.url });
+  // let foundMembers = potentialRoom.roomMembers;
+  // console.log("Members in room: " + foundMembers);
+  res.render("list", { url: config.url, buttonClicked});
 });
 
 // DEBUG: For checking HTML elements on a safe page.
@@ -702,6 +712,28 @@ app.get("/logout", (req, res) => {
   res.clearCookie("roomNumber");
 
   res.render("index");
+});
+
+// Same functionality as logout but only clear the roomNumber
+app.get('/leave', (req, res) => {
+  const roomNumber = req.cookies.roomNumber;
+  const curUsersID = req.cookies.steamID;
+  let potentialRoom = socketRooms.find((x) => x.roomNumber === roomNumber);
+  
+  if (potentialRoom) { // our room was found so delete the user
+      if (potentialRoom.roomMembers.length == 1) { // user is the sole person in the room
+          deleteRoom(roomNumber);
+          // otherwise they're in a populated room and need to be specifically removed
+      } else { 
+          deleteUserFromRoom(roomNumber, curUsersID);
+      }
+  } else {
+      console.error(`ERROR: User was in a room that doesn't exist anymore?`);
+  }
+
+  res.clearCookie('roomNumber');
+
+  res.render('room-choice');
 });
 
 server.listen(3000, () => {
