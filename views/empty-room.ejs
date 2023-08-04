@@ -21,7 +21,7 @@
             <button id="copyRoomLink" class="roomButtonText" onclick="showSuccess(); copyFunction()"> COPY ROOM LINK </button>
             <br>
             <!-- TODO: Make this actually do something -->
-            <button class="roomButtonText" style="background-color: #C75858"> LEAVE ROOM </button>
+            <button id='leave' class="roomButtonText" style="background-color: #C75858"> LEAVE ROOM </button>
     </div>
 </div>
 <script>
@@ -62,19 +62,24 @@
     });
 
     // Button used to dynamically reload page for all members
+    // let buttonClicked = '<%= buttonClicked %>';
     let button = document.getElementById('newList');
     button.addEventListener('click', function() {
         let steamID = Cookies.get('steamID');
         let username = Cookies.get('username');
         let avatar = Cookies.get('avatar');
         let roomNumber = Cookies.get('roomNumber');
+        socket.emit('generateList');
         socket.emit('newList', {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber});
     });
+    
 
     // redirects to list page
     socket.on('navigate', function() {
         window.location.href = "/list";
     });
+
+
 
     function copyFunction() {
         let copyRoomNum = document.getElementById('roomNumber');
@@ -94,4 +99,10 @@
             // message: 'successs',
         });
     }
+
+    let leave = document.getElementById('leave');
+    leave.addEventListener('click', function() {
+        sessionStorage.clear();
+        window.location.href = "/leave";
+    });
 </script>
