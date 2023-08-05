@@ -357,29 +357,36 @@ app.post("/room-choice", async (req, res) => {
   );
 });
 
-app.get("/join-room", async (req, res) => {
-  await checkGames(req.cookies.steamID);
+app.get("/join-room", (req, res) => {
   res.render("join-room", { existingRooms: existingRooms });
 });
-let buttonClicked = 0;
-app.post("/join-room", (req, res) => {
+
+app.post("/join-room", async (req, res) => {
+  await checkGames(req.cookies.steamID);
   let potentialRoomNum = req.body.roomnum;
 
   if (existingRooms.includes(potentialRoomNum)) {
     res.cookie("roomNumber", potentialRoomNum);
-    res.render("empty-room", { roomNumber: potentialRoomNum, url: config.url, buttonClicked: buttonClicked});
+    res.render("empty-room", { roomNumber: potentialRoomNum, url: config.url});
   } else {
-    res.render("join-room", { existingRooms: existingRooms, buttonClicked: buttonClicked});
+    res.render("join-room", { existingRooms: existingRooms});
   }
+});
+
+app.get("/list", async (req, res) => {
+  // let foundMembers = potentialRoom.roomMembers;
+  // console.log("Members in room: " + foundMembers);
+  res.render("list", { url: config.url});
 });
 
 // TODO: Ensure that regardless of the proper routing, that all pages validate and ensure they have the data they need (e.g. empty-room will redirect the users to create/join room if they DONT have a Room Number in their cookies).
 app.get("/empty-room", async (req, res) => {
+    
   await checkGames(req.cookies.steamID);
   // console.log(req.cookies);
   res.render("empty-room", {
     roomNumber: req.cookies.roomNumber,
-    url: config.url, buttonClicked: buttonClicked
+    url: config.url
   });
 });
 
@@ -407,10 +414,18 @@ app.post("/alt-login", async (req, res) => {
 });
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
-  // Used to generate room with its members
+  //used to refresh the list when a user joins/leaves a room
   socket.on('generateList', () => {
     io.emit('refreshList');
   });
+
+  //to refresh the empty-room page when a user leaves
+  socket.on('generateList2', () => {
+    console.log(`Hit Generate List!`);
+    io.emit('refreshList2');
+  });
+
+    // Used to generate room with its members
   socket.on("message", (data) => {
     // Comes from the front end; number was made in another route (room choice).
     let roomNumber = data.roomNumber;
@@ -566,18 +581,17 @@ io.on("connection", (socket) => {
       tags: gameTags,
       prices: gamePrices,
       categories: allPotentialTags,
-      // memberCount: memberCount,
     });
     
   });
 
 });
 
-app.get("/list", async (req, res) => {
-  // let foundMembers = potentialRoom.roomMembers;
-  // console.log("Members in room: " + foundMembers);
-  res.render("list", { url: config.url, buttonClicked});
-});
+// app.get("/list", async (req, res) => {
+//   // let foundMembers = potentialRoom.roomMembers;
+//   // console.log("Members in room: " + foundMembers);
+//   res.render("list", { url: config.url});
+// });
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
@@ -698,7 +712,7 @@ app.get("/logout", (req, res) => {
         if (potentialRoom.roomMembers.length == 1) { // user is the sole person in the room
             deleteRoom(roomNumber);
             // otherwise they're in a populated room and need to be specifically removed
-        } else { 
+        } else {
             deleteUserFromRoom(roomNumber, curUsersID);
         }
     } else {

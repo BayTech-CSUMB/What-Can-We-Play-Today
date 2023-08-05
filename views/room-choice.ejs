@@ -1,7 +1,7 @@
 <%- include('partials/header.ejs') %> 
-<%- include('partials/navbar.ejs') %>
+<%- include('partials/navbarLogout.ejs') %>
 
-
+<img id="loading" src="/img/demo.gif">
 <div class="gradient-background">
     <div class="background-box">
         <h1> Enter a Room! </h1>
@@ -16,8 +16,9 @@
     <div id="roomChoiceButtons">
         <form action="/room-choice" method="post">
             <input type="hidden" name="role" value="Host" />
-            <button type="submit" style="margin: 5px">Create Room</button>
+            <button type="submit" style="margin: 5px" onclick="displayAnimation()">Create Room</button>
         </form>
+        
         <form action="/join-room" method="get">
             <input type="hidden" name="role" value="Member" />
             <button type="submit" style="margin: 5px">Join Room</button>
@@ -26,6 +27,8 @@
 </div>
     
 <script>
+    // document.querySelector('.gradient-background').style.display = '';
+    document.getElementById('loading').style.display = 'none';
     let username = document.querySelector('#isUser');
     let temp = Cookies.get('username');
     // TODO: Change the username to a different color
@@ -36,4 +39,9 @@
     // console.log();
     let profilePic = document.querySelector("#userAvatar");
     profilePic.innerHTML += `<img src="${avatar}" alt="Icon for ${username}" />`;
+
+    function displayAnimation() {
+        document.getElementById('loading').style.display = 'block';
+        document.querySelector(".gradient-background").style.display = "none";
+    }
 </script>
