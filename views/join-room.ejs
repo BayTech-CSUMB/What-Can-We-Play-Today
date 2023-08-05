@@ -1,43 +1,70 @@
 <%- include('partials/header.ejs') %> 
 <%- include('partials/navbarBack.ejs', {linkToPage: `/room-choice`}) %>
 
-<div>
-    <h1> Room Code </h1>
-    <br>
-</div>
-
-<div id="form">
-<form name="join" method="post" action="/join-room" onsubmit="return check()" class="inputField">
-    <div class="inputWrapper">
-        <input type="text" maxlength="1" class="roomnum" id="roomnum1" oninput="moveFocus(1, 2)">
-        <input type="text" maxlength="1" class="roomnum" id="roomnum2" oninput="moveFocus(2, 3)">
-        <input type="text" maxlength="1" class="roomnum" id="roomnum3" oninput="moveFocus(3, 4)">
-        <input type="text" maxlength="1" class="roomnum" id="roomnum4" oninput="moveFocus(4, 5)">
-        <input type="text" maxlength="1" class="roomnum" id="roomnum5">
+<img id="loading" src="/img/demo.gif">
+<div class="gradient-background">
+    <div>
+        <h1 id="joinRoomCode"> ROOM CODE </h1>
+        <img class="roomSeperator" src="/img/controllerSeparator.png" alt="Separator for Page">
     </div>
-    <input type="hidden" id="roomnum" name="roomnum">
-    <br>
-    <button type="submit">JOIN ROOM</button>
-</form>
+    <div class="background-box">
+        <p id="topJoinText" class="joinRoomText"> Enter a Room Code Here </p>
+        <div id="form">
+            <form name="join" method="post" action="/join-room" onsubmit="return check()" class="inputField">
+                <div class="inputWrapper">
+                    <input type="text" maxlength="1" class="roomnum" id="roomnum1" oninput="moveForward(1,2)">
+                    <input type="text" maxlength="1" class="roomnum" id="roomnum2" oninput="moveForward(2,3)" onkeyup="moveBack(event, 2)">
+                    <input type="text" maxlength="1" class="roomnum" id="roomnum3" oninput="moveForward(3,4)" onkeyup="moveBack(event, 3)">
+                    <input type="text" maxlength="1" class="roomnum" id="roomnum4" oninput="moveForward(4,5)" onkeyup="moveBack(event, 4)">
+                    <input type="text" maxlength="1" class="roomnum" id="roomnum5" onkeyup="moveBack(event, 5)">
+                </div>
+                <input type="hidden" id="roomnum" name="roomnum">
+                <br>
+                <button type="submit">JOIN ROOM</button>
+            </form>
+            <p id="bottomJoinText" class="joinRoomText"> Don't forget to ask a friend for the Room Code! </p>
+        </div>
+    </div>
 </div>
 
-<script> 
-    function check(){
+<script>
+    document.getElementById('loading').style.display = 'none';
+    function check() {
         var roomNumber = document.getElementById("roomnum1").value + document.getElementById("roomnum2").value +
                          document.getElementById("roomnum3").value + document.getElementById("roomnum4").value + 
                          document.getElementById("roomnum5").value;
+                         
         if (!'<%= existingRooms %>'.includes(roomNumber)) {
             alert("Room number doesn't exist");
             return false;
         }
+        // Used to send the room-number data to the back end
         document.getElementById("roomnum").value = roomNumber;
+        
+        // Displays loading animation
+        document.getElementById('loading').style.display = 'block';
+        document.querySelector(".gradient-background").style.display = "none";
         return true;
     }
 
     
-    function moveFocus(currentBox, nextBox) {
-        if(document.getElementById("roomnum" + currentBox).value.length === 1) {
-            document.getElementById("roomnum" + nextBox).focus();
+    function moveForward(currentBox, nextBox) {
+        const currentValue = document.getElementById('roomnum' + currentBox).value;
+
+        if (currentValue.length === 1) {
+            document.getElementById('roomnum' + nextBox)?.focus();
         }
     }
+
+    function moveBack(event, currentBox){
+        const key = event.key;
+        const currentValue = document.getElementById('roomnum' + currentBox).value;
+
+        if(key === 'Backspace'){
+            if(currentValue === ''){
+                document.getElementById('roomnum' + (currentBox-1)).focus();
+            }
+        }
+    }
+
 </script>

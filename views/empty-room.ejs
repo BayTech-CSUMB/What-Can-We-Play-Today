@@ -18,10 +18,10 @@
             <button id="newList" class="roomButtonText"> GENERATE LIST </button>
             <!-- TODO: Use proper CSS styling here instead of BRs -->
             <br>
-            <button id="copyRoomLink" class="roomButtonText" onclick="showSuccess(); copyFunction()"> COPY ROOM LINK </button>
+            <button id="copyRoomLink" class="roomButtonText" onclick="showSuccess(); copyFunction()"> COPY ROOM CODE </button>
             <br>
             <!-- TODO: Make this actually do something -->
-            <button id='leave' class="roomButtonText" style="background-color: #C75858"> LEAVE ROOM </button>
+            <button id="leave" class="roomButtonText" style="background-color: #C75858"> LEAVE ROOM </button>
     </div>
 </div>
 <script>
@@ -62,7 +62,6 @@
     });
 
     // Button used to dynamically reload page for all members
-    // let buttonClicked = '<%= buttonClicked %>';
     let button = document.getElementById('newList');
     button.addEventListener('click', function() {
         let steamID = Cookies.get('steamID');
@@ -72,19 +71,27 @@
         socket.emit('generateList');
         socket.emit('newList', {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber});
     });
-    
 
+    let leave = document.getElementById('leave');
+    leave.addEventListener('click', function() {
+        sessionStorage.clear();
+        socket.emit('generateList2');
+        window.location.href = "/leave";
+    });
+
+    socket.on('refreshList2', () =>  {
+        location.reload();
+    });
+    
     // redirects to list page
     socket.on('navigate', function() {
         window.location.href = "/list";
     });
 
-
-
     function copyFunction() {
         let copyRoomNum = document.getElementById('roomNumber');
-        var selection = window.getSelection();
-        var range = document.createRange();
+        let selection = window.getSelection();
+        let range = document.createRange();
 
         range.selectNodeContents(copyRoomNum);
         selection.removeAllRanges();
@@ -100,9 +107,16 @@
         });
     }
 
-    let leave = document.getElementById('leave');
-    leave.addEventListener('click', function() {
-        sessionStorage.clear();
-        window.location.href = "/leave";
-    });
+    // let leave = document.getElementById('leave');
+    // leave.addEventListener('click', function() {
+    //     let steamID = Cookies.get('steamID');
+    //     let username = Cookies.get('username');
+    //     let avatar = Cookies.get('avatar');
+    //     let roomNumber = Cookies.get('roomNumber');
+    //     sessionStorage.clear();
+    //     window.location.href = "/leave";
+    //     socket.emit('generateList', {username: username});
+    //     socket.emit('leave', {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber});
+
+    // });
 </script>

@@ -2,6 +2,7 @@
 <%- include('partials/navbar.ejs') %>
 
 <body onload="sendMessage()">
+    <img id="loading" src="/img/demo.gif">
     <div id="listPageLayout">
         <div id="leftHandList">
             <div>
@@ -38,8 +39,6 @@
             <div class="gradient-background">
                 <h1 id="toGrabList"> SHARED GAMES </h1>
                 <div id="toGrab"></div>
-                <!-- TODO: Style this to be larger. -->
-                <img class="roomSeperator" src="/img/controllerSeparator.png" alt="Separator for Page">
                 <h1 id="recGamesList"> RECOMMENDED GAMES </h1>
                 <div id="recGames"></div>
             </div>
@@ -53,26 +52,37 @@
             <!-- TODO: Placeholder Number -->
             <p id = "displayRoomNum"> </p>
             <!-- TODO: Button for copying Room Code -->
-            <button id= "logout" style="background-color: red;"> Logout & Leave Room </button> <br> <br>
-            <button id= "leave" style="background-color: red;"> Leave Room </button>
+            <button id = "logout" style="background-color: red;"> Logout & Leave Room </button> <br> <br>
+            <button id = "leave" style="background-color: red;"> Leave Room </button>
         </div>
+
     </div>
 </body>
 
 <script>
-  console.log("CHECKING" + parseInt(localStorage.getItem('buttonClicked')) || 0);
-
-      console.log("CLICKED P" + '<%= buttonClicked %>');
-      localStorage.setItem('buttonClicked', 0);
-
-      
-      console.log("CHECKING AFTER" + parseInt(localStorage.getItem('buttonClicked')) || 0);
-
+  document.getElementById('listPageLayout').style.display = 'none';
   const socket = io("<%= url %>");
   socket.on("connection");
+  
+  
+  // socket.on('navigate', function() {
+  //       window.location.href = "/list";
+  //   });
+
+
   socket.on('refreshList', () =>  {
-        window.location.reload();
+        location.reload();
     });
+    
+  let leave = document.getElementById("leave");
+  leave.addEventListener('click', function() {
+    let username = Cookies.get('username');
+    sessionStorage.clear();
+    socket.emit('generateList');
+    window.location.href = "/leave";
+  });
+
+  // });
   // If Tags are found, provide them a way to "remove" them.
   // For now, we'll just have a single button to clear and then reload the page.
   if (sessionStorage.getItem('tagSelection') || sessionStorage.getItem('categorySelection') || sessionStorage.getItem('priceSelection') || sessionStorage.getItem('minPriceSelection') || sessionStorage.getItem('maxPriceSelection')) {
@@ -93,9 +103,15 @@
     document.querySelector('#clearAllFiltersButton').appendChild(tempButton);
   }
 
+  // function showLoadingGif(){
+  //     document.getElementById('loading').classList.remove('hide');
+  //   }
+  //   function hideLoadingGif(){
+  //     document.getElementById('loading').classList.add('hide');
+  //   }
 // TODO: does everything need to be in sendMessage?
   const sendMessage = () => {
-
+    // showLoadingGif();
     let steamID = Cookies.get("steamID");
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
@@ -162,6 +178,8 @@
       // Quickly set our room number to the page.
       let currentRoomNum = document.getElementById('displayRoomNum');
       currentRoomNum.textContent = roomNumber;
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('listPageLayout').style.display = 'flex';
 
       function dropDownMenu1() {
         const menu = document.createElement("select");
@@ -436,12 +454,6 @@
   };
 
 
-  // let buttonClicked = parseInt(localStorage.getItem('buttonClicked')) || 0;
-  // console.log("BUTTON CLICKED", buttonClicked);
-  //     if(buttonClicked > 1){
-  //       window.location.reload();
-  //     )
-
   // socket.emit('reload', {roomNumber: Cookies.get("roomNumber")});
   let logout = document.getElementById("logout");
   logout.addEventListener('click', function() {
@@ -449,9 +461,10 @@
     window.location.href = "/logout";
   });
 
-  let leave = document.getElementById('leave');
-  leave.addEventListener('click', function() {
-    sessionStorage.clear();
-    window.location.href = "/leave";
-  });
+  // let leave = document.getElementById('leave');
+  // leave.addEventListener('click', function() {
+  //   sessionStorage.clear();
+  //   window.location.href = "/leave";
+  //   socket.emit('generateList');
+  // });
 </script>
