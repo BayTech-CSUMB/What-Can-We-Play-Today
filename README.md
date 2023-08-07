@@ -1,6 +1,3 @@
-Of course! Here's the README in markdown format for you to copy and paste:
-
-```markdown
 # WhatCanWePlayToday
 
 A game recommendation platform for Steam users, designed to help groups of friends find new games to play together.
@@ -21,39 +18,35 @@ A game recommendation platform for Steam users, designed to help groups of frien
 ### Prerequisites
 
 - Node.js
-- MongoDB
 
 ### Installation
 
 1. Clone the repository:
-```
-git clone https://github.com/YukioRivera/WhatCanWePlayToday.git
-```
+   ```bash
+   git clone https://github.com/YukioRivera/WhatCanWePlayToday.git
+   ```
 
 2. Navigate to the project directory:
-```
-cd WhatCanWePlayToday
-```
+   ```bash
+   cd WhatCanWePlayToday
+   ```
 
 3. Install the required dependencies:
-```
-npm install
-```
+   ```bash
+   npm install
+   ```
 
 4. Start the server:
-```
-npm start
-```
+   ```bash
+   npm start
+   ```
 
 5. Open a web browser and navigate to `http://localhost:3000` to access the application.
 
 ## Feedback and Contributions
 
-Feedback is always welcome! If you'd like to contribute to the project, please fork the repository and create a pull request.
+Feedback is always welcome!
 
 ## License
 
 This project is licensed under the MIT License.
-```
-
-You can copy the above content and paste it into your README.md file on GitHub.
