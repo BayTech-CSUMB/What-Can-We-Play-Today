@@ -2,7 +2,9 @@
 <%- include('partials/navbar.ejs') %>
 
 <body onload="sendMessage()">
-    <img id="loading" src="/img/demo.gif">
+    <div id="animationContainer">
+        <img id="loading" src="/img/listLoad.gif">
+    </div>
     <div id="listPageLayout">
         <div id="leftHandList">
             <div>
@@ -178,7 +180,7 @@
       // Quickly set our room number to the page.
       let currentRoomNum = document.getElementById('displayRoomNum');
       currentRoomNum.textContent = roomNumber;
-      document.getElementById('loading').style.display = 'none';
+      document.getElementById('animationContainer').style.display = 'none';
       document.getElementById('listPageLayout').style.display = 'flex';
 
       function dropDownMenu1() {

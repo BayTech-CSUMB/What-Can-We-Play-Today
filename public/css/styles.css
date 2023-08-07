@@ -93,7 +93,7 @@ nav {
 }
 
 #logoutNavButton {
-    max-height: 5vh;
+    /* max-height: 5vh; */
     background-color: transparent;
 }
 
@@ -448,4 +448,51 @@ ul, li {
 .joinRoomText {
     color: #B4B4B4;
     font-size: 1.25rem;
+}
+
+#animationContainer {
+    display: flex;
+    height: 90vh;
+    justify-content: center;
+    align-items: center;
+}
+
+#loading {
+    max-height: 65vh;
+}
+
+/* Specific navbar for back button & logout */
+#navBackLog {
+    display: flex;
+}
+
+#navBackLog #backItem {
+    flex: 0.5;
+}
+
+#navBackLog #centralArea {
+    flex: 9;
+}
+
+#navBackLog #centralArea img {
+    padding-left: 4vw;
+}
+
+#navBackLog #logoutNavButton {
+    flex: 0.5;
+    align-self: center;
+    max-height: auto;
+}
+
+/*  */
+#navLog #centralArea {
+    flex: 9.5;
+}
+
+#navLog #centralArea img {
+    padding-left: 8.8vw;
+}
+
+#navLog #logoutNavButton {
+    flex: 0.5;
 }

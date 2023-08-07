@@ -1,7 +1,9 @@
-<%- include('partials/header.ejs') %> 
-<%- include('partials/navbarBack.ejs', {linkToPage: `/room-choice`}) %>
+<%- include('partials/header.ejs') %>
+<%- include('partials/navbarBackLogout.ejs', {linkToPage: `/room-choice`}) %>
 
-<img id="loading" src="/img/demo.gif">
+<div id="animationContainer">
+    <img id="loading" src="/img/choiceLoad.gif">
+</div>
 <div class="gradient-background">
     <div>
         <h1 id="joinRoomCode"> ROOM CODE </h1>
@@ -28,7 +30,7 @@
 </div>
 
 <script>
-    document.getElementById('loading').style.display = 'none';
+    document.getElementById('animationContainer').style.display = 'none';
     function check() {
         var roomNumber = document.getElementById("roomnum1").value + document.getElementById("roomnum2").value +
                          document.getElementById("roomnum3").value + document.getElementById("roomnum4").value + 
@@ -42,11 +44,10 @@
         document.getElementById("roomnum").value = roomNumber;
         
         // Displays loading animation
-        document.getElementById('loading').style.display = 'block';
+        document.getElementById('animationContainer').style.display = 'flex';
         document.querySelector(".gradient-background").style.display = "none";
         return true;
     }
-
     
     function moveForward(currentBox, nextBox) {
         const currentValue = document.getElementById('roomnum' + currentBox).value;
