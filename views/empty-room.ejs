@@ -68,14 +68,15 @@
         let username = Cookies.get('username');
         let avatar = Cookies.get('avatar');
         let roomNumber = Cookies.get('roomNumber');
-        socket.emit('generateList');
+        socket.emit('generateList', {roomNumber: roomNumber});
         socket.emit('newList', {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber});
     });
 
     let leave = document.getElementById('leave');
     leave.addEventListener('click', function() {
+        let roomNumber = Cookies.get('roomNumber');
         sessionStorage.clear();
-        socket.emit('generateList2');
+        socket.emit('generateList2', {roomNumber: roomNumber});
         window.location.href = "/leave";
     });
 
