@@ -1,7 +1,9 @@
 <%- include('partials/header.ejs') %> 
 <%- include('partials/navbarLogout.ejs') %>
 
-<img id="loading" src="/img/demo.gif">
+<div id="animationContainer">
+    <img id="loading" src="/img/choiceLoad.gif">
+</div>
 <div class="gradient-background">
     <div class="background-box">
         <h1> Enter a Room! </h1>
@@ -28,7 +30,8 @@
     
 <script>
     // document.querySelector('.gradient-background').style.display = '';
-    document.getElementById('loading').style.display = 'none';
+    document.getElementById('animationContainer').style.display = 'none';
+
     let username = document.querySelector('#isUser');
     let temp = Cookies.get('username');
     // TODO: Change the username to a different color
@@ -41,7 +44,7 @@
     profilePic.innerHTML += `<img src="${avatar}" alt="Icon for ${username}" />`;
 
     function displayAnimation() {
-        document.getElementById('loading').style.display = 'block';
+        document.getElementById('animationContainer').style.display = 'flex';
         document.querySelector(".gradient-background").style.display = "none";
     }
 </script>

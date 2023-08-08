@@ -1,11 +1,11 @@
-<nav>
+<nav id="navLog">
     <!-- TODO: Figure out how to use Vector here instead of PNG -->
     <!-- <img
       id="logo"
       alt="What Can We Play Today Logo"
       src="/img/VecLogo.svg"
     /> -->
-    <a href="/">
+    <a id="centralArea" href="/">
         <img
         id="logo"
         alt="What Can We Play Today Logo"
@@ -17,3 +17,10 @@
         <img id="actualLogoutImg" src="/img/logout.png" alt="Logout Button">
     </button>
 </nav>
+
+<script>
+    let logout = document.getElementById('actualLogoutImg');
+    logout.addEventListener('click', function(){
+        window.location.href = "/logout";
+    });
+</script>

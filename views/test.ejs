@@ -1,6 +1,9 @@
 <%- include('partials/header.ejs') %> 
 <%- include('partials/navbarBack.ejs', {linkToPage: `/`}) %> 
 
+<div id="animationContainer">
+    <img id="loadingChoice" src="/img/choiceLoad.gif">
+</div>
 <div id="listPageLayout">
     <div id="leftHandList">
             <div>
@@ -76,6 +79,9 @@
 
 
 <script> 
+    // document.getElementById('loading').style.display = 'none';
+    document.getElementById('listPageLayout').style.display = 'none';
+
     function displayPriceRange() {
         const userInputMin = document.getElementById("inputPrice").value;
         const userInputMax = document.getElementById("inputPriceMax").value;

@@ -415,14 +415,15 @@ app.post("/alt-login", async (req, res) => {
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
   //used to refresh the list when a user joins/leaves a room
-  socket.on('generateList', () => {
-    io.emit('refreshList');
+  socket.on('generateList', (data) => {
+    socket.join("room-" + data.roomNumber);
+    io.sockets.in("room-" + data.roomNumber).emit("refreshList");
   });
 
   //to refresh the empty-room page when a user leaves
-  socket.on('generateList2', () => {
-    console.log(`Hit Generate List!`);
-    io.emit('refreshList2');
+  socket.on('generateList2', (data) => {
+    socket.join("room-" + data.roomNumber);
+    io.sockets.in("room-" + data.roomNumber).emit("refreshList2");
   });
 
     // Used to generate room with its members

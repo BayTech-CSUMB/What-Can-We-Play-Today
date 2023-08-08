@@ -93,7 +93,7 @@ nav {
 }
 
 #logoutNavButton {
-    max-height: 5vh;
+    /* max-height: 5vh; */
     background-color: transparent;
 }
 
@@ -281,9 +281,9 @@ ul, li {
     font-size: 1.25rem;
 }
 
-#copyRoomLink {
+/* #copyRoomLink {
 
-}
+} */
 
 #newList {
     font-size: 1.5rem;
@@ -388,9 +388,9 @@ ul, li {
     background-color: red;
 }
 
-#roomMembersList {
+/* #roomMembersList {
 
-}
+} */
 
 #genreDiv select, #menuDiv select {
     background-color: transparent;
@@ -448,4 +448,86 @@ ul, li {
 .joinRoomText {
     color: #B4B4B4;
     font-size: 1.25rem;
+}
+
+#animationContainer {
+    display: flex;
+    height: 90vh;
+    justify-content: center;
+    align-items: center;
+}
+
+#loading {
+    max-height: 65vh;
+}
+
+/* Specific navbar for back button & logout */
+#navBackLog {
+    display: flex;
+}
+
+#navBackLog #backItem {
+    flex: 0.5;
+}
+
+#navBackLog #centralArea {
+    flex: 9;
+}
+
+#navBackLog #centralArea img {
+    padding-left: 4vw;
+}
+
+#navBackLog #logoutNavButton {
+    flex: 0.5;
+    align-self: center;
+    max-height: auto;
+}
+
+/*  */
+#navLog #centralArea {
+    flex: 9.5;
+}
+
+#navLog #centralArea img {
+    padding-left: 8.8vw;
+}
+
+#navLog #logoutNavButton {
+    flex: 0.5;
+}
+
+.modal{
+    display: none;
+    position: fixed;
+    padding-top: 50%;
+    /* left: 100; */
+    width: 100%;
+    height: 30%;
+}
+.modal-content{
+    background-color: #171A21;
+    color: white;
+    position: absolute;
+    width: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+#close, #close2{
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    font-size: 30px;
+    transform: translateX(-50%);
+    cursor: pointer;
+}
+
+#back, #back2{
+    position: absolute;
+    top: 10px;
+    color: red;
+    right: 15px;
+    font-size: 40px;
+    cursor: pointer;
 }
