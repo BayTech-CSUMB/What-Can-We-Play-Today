@@ -1,5 +1,5 @@
 <%- include('partials/header.ejs') %> 
-<%- include('partials/navbar.ejs') %>
+<%- include('partials/navBarLogoutList.ejs') %> 
 
 <body onload="sendMessage()">
     <div id="animationContainer">
@@ -54,7 +54,6 @@
             <!-- TODO: Placeholder Number -->
             <p id = "displayRoomNum"> </p>
             <!-- TODO: Button for copying Room Code -->
-            <button id = "logout" style="background-color: red;"> Logout & Leave Room </button> <br> <br>
             <button id = "leave" style="background-color: red;"> Leave Room </button>
         </div>
 
@@ -78,11 +77,18 @@
     
   let leave = document.getElementById("leave");
   leave.addEventListener('click', function() {
-    let username = Cookies.get('username');
+    let roomNumber = Cookies.get("roomNumber");
     sessionStorage.clear();
-    socket.emit('generateList');
+    socket.emit('generateList', {roomNumber: roomNumber});
     window.location.href = "/leave";
   });
+
+  // let logout = document.getElementById("actualLogoutImg");
+  // logout.addEventListener('click', function(){
+  //   sessionStorage.clear();
+  //   socket.emit('generateList');
+  //   window.location.href = "/logout";
+  // });
 
   // });
   // If Tags are found, provide them a way to "remove" them.
@@ -457,11 +463,11 @@
 
 
   // socket.emit('reload', {roomNumber: Cookies.get("roomNumber")});
-  let logout = document.getElementById("logout");
-  logout.addEventListener('click', function() {
-    sessionStorage.clear();
-    window.location.href = "/logout";
-  });
+  // let logout = document.getElementById("logout");
+  // logout.addEventListener('click', function() {
+  //   sessionStorage.clear();
+  //   window.location.href = "/logout";
+  // });
 
   // let leave = document.getElementById('leave');
   // leave.addEventListener('click', function() {
