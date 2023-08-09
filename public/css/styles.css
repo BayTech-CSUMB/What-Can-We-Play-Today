@@ -45,6 +45,10 @@ h1, h2, a, p, label {
     height: 90vh;
 }
 
+#homePageGradient {
+    height: 100vh;
+}
+
 /* Specific Hover color for links */
 a:hover {
     color:#9FE544;

@@ -80,6 +80,7 @@
     let roomNumber = Cookies.get("roomNumber");
     sessionStorage.clear();
     socket.emit('generateList', {roomNumber: roomNumber});
+    socket.emit('generateList2', {roomNumber: roomNumber});
     window.location.href = "/leave";
   });
 
@@ -387,7 +388,7 @@
             return '';
         }
       }
-
+      
       function buildPrices(gamesPrices) {
         let toReturn = ``;
         if (gamesPrices[1] == null) {

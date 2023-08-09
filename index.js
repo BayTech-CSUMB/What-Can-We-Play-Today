@@ -59,7 +59,14 @@ function Room(roomNumber, roomMembers) {
   this.roomMembers = roomMembers;
   this.roomSize = 0;
 }
+
+let mainTestingRoom = new Room(`99999`, [[`76561198016716226`, `TidalWings`, `https://avatars.steamstatic.com/de63198a51c76b3ed2dfd72e82d2ce4d666ce449_medium.jpg`]]);
+let altTestingRoom = new Room(`11111`, [[`76561199516233321`, `drslurpeemd`, `https://avatars.steamstatic.com/b9fa08a1e25a9dadaebbab031b6b2974502416fa_medium.jpg`]]);
 let socketRooms = [];
+socketRooms.push(mainTestingRoom);
+socketRooms.push(altTestingRoom);
+existingRooms.push(`99999`);
+existingRooms.push(`11111`);
 
 // ================== FUNCTIONS ==================
 
@@ -599,6 +606,8 @@ app.get("/test", async (req, res) => {
   console.log(`Running Test.`);
 
     console.log(socketRooms);
+    // console.log(socketRooms[0].roomMembers);
+    // console.log(socketRooms[0].roomNumber);
 
   res.render("test");
 });
