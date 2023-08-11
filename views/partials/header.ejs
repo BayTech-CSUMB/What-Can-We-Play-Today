@@ -2,13 +2,14 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>What Can We Play?</title>
+    <title> <%= title %> </title>
     <!-- TODO: Add Icon for Tab Bar -->
+    <!-- TODO: Prune/Create specific Headers to not load all the scripts when needed -->
     <!-- Bootstrap CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     <!-- Our Custom Stylesheet -->
-    <link rel = "stylesheet" href="/css/styles.css" />
+    <link rel = "stylesheet" href="/css/<%= stylesheet %>"  />
     <!-- GOOGLE FONTS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

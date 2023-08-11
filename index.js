@@ -1,6 +1,8 @@
 // Critical for Express itself
 const express = require("express");
 const app = express();
+
+// Modules used to facilitate data transfer and storage
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 const bodyParser = require("body-parser");
@@ -18,6 +20,7 @@ steamWrapper.setKey(config.steamKey);
 
 // Necessary for Steam Oauth
 const SteamAuth = require("node-steam-openid");
+
 // Setup for Steam Oauth
 const steam = new SteamAuth({
   // TODO: Eventually this will be set to the proper Domain name.
@@ -59,10 +62,19 @@ function Room(roomNumber, roomMembers) {
   this.roomMembers = roomMembers;
   this.roomSize = 0;
 }
+
+// Hard coded users for testing
+let mainTestingRoom = new Room(`99999`, [[`76561198016716226`, `TidalWings`, `https://avatars.steamstatic.com/de63198a51c76b3ed2dfd72e82d2ce4d666ce449_medium.jpg`]]);
+let altTestingRoom = new Room(`11111`, [[`76561199516233321`, `drslurpeemd`, `https://avatars.steamstatic.com/b9fa08a1e25a9dadaebbab031b6b2974502416fa_medium.jpg`]]);
 let socketRooms = [];
+socketRooms.push(mainTestingRoom);
+socketRooms.push(altTestingRoom);
+existingRooms.push(`99999`);
+existingRooms.push(`11111`);
 
 // ================== FUNCTIONS ==================
 
+// Fetches details of game using its id
 async function fetchTags(gameID) {
   const url = `https://steamspy.com/api.php?request=appdetails&appid=${gameID}`;
   const response = await fetch(url);
@@ -92,7 +104,7 @@ function deleteRoom(roomNumber) {
 }
 
 /**
- * 
+ * Removes user from the room
  * @param {*} roomNumber 
  * @param {*} userID 
  */
@@ -128,6 +140,7 @@ function generateDate() {
   return `2023-07-20`;
 }
 
+// Used to get data that was not previously fetched using the game id
 async function fetchGenresPrices(gameID) {
   // Then Steam's API for majority of the data. From this we want the "categories" and pricing of each game.
   const steamURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}&l=en`;
@@ -136,9 +149,6 @@ async function fetchGenresPrices(gameID) {
   let initial_price = 0;
   let final_price = 0;
   let genre = ``;
-
-  // DEBUG: Check Output
-  // console.log(result2);
 
   if (result2[`${gameID}`].success == true) {
     // ensures no de-listed games
@@ -169,6 +179,7 @@ async function fetchGenresPrices(gameID) {
   return [genre, initial_price, final_price];
 }
 
+// TODO: Finish functionality
 function computeDateDiff(dateToCompare) {
   const curDate = generateDate();
 
@@ -176,6 +187,7 @@ function computeDateDiff(dateToCompare) {
   return false; // placeholder return for now.
 }
 
+// Checks our database to see if we've got the game and then checks if the user is associated with said game
 async function checkGames(steamID) {
   // First we'll fetch the list of owned games per the users steamID.
   // An API function that will set gameCount and gameInfo to the total count
@@ -290,6 +302,7 @@ app.get("/", (req, res) => {
   res.render("index");
 });
 
+// Renders our privacy policy
 app.get("/privacy-policy", (req, res) => {
   res.render("privacy-policy");
 });
@@ -304,8 +317,6 @@ app.get("/auth/steam", async (req, res) => {
 app.get("/auth/steam/authenticate", async (req, res) => {
   try {
     const user = await steam.authenticate(req);
-    // DEBUG: Confirm the Users account details.
-    // console.log(user);
 
     // TODO: Check that this cookie storage method is best practices.
     res.cookie("steamID", user["steamid"]);
@@ -331,7 +342,7 @@ app.get("/room-choice", (req, res) => {
   res.render("room-choice");
 });
 
-//Passes host role
+//Passes host role and creates a unique room
 app.post("/room-choice", async (req, res) => {
   let roomNumber = Math.floor(Math.random() * 90000) + 10000;
   roomNumber = roomNumber.toString();
@@ -357,10 +368,12 @@ app.post("/room-choice", async (req, res) => {
   );
 });
 
+// Renders join room page with all the currently existing rooms
 app.get("/join-room", (req, res) => {
   res.render("join-room", { existingRooms: existingRooms });
 });
 
+// Gets data from front end and then adds user to the room if the code is valid
 app.post("/join-room", async (req, res) => {
   await checkGames(req.cookies.steamID);
   let potentialRoomNum = req.body.roomnum;
@@ -373,17 +386,18 @@ app.post("/join-room", async (req, res) => {
   }
 });
 
+// Renders list page
 app.get("/list", async (req, res) => {
-  // let foundMembers = potentialRoom.roomMembers;
-  // console.log("Members in room: " + foundMembers);
+
   res.render("list", { url: config.url});
 });
 
 // TODO: Ensure that regardless of the proper routing, that all pages validate and ensure they have the data they need (e.g. empty-room will redirect the users to create/join room if they DONT have a Room Number in their cookies).
+// Renders the room with its users
 app.get("/empty-room", async (req, res) => {
     
   await checkGames(req.cookies.steamID);
-  // console.log(req.cookies);
+
   res.render("empty-room", {
     roomNumber: req.cookies.roomNumber,
     url: config.url
@@ -412,27 +426,31 @@ app.post("/alt-login", async (req, res) => {
     console.log("Could not fetch information...");
   }
 });
+
+
 //Socket.io used to room member data to the front end
 io.on("connection", (socket) => {
-  //used to refresh the list when a user joins/leaves a room
+
+  // Used to refresh the list when a user joins/leaves a room
   socket.on('generateList', (data) => {
     socket.join("room-" + data.roomNumber);
     io.sockets.in("room-" + data.roomNumber).emit("refreshList");
   });
 
-  //to refresh the empty-room page when a user leaves
+  // Used to refresh the empty-room page when a user leaves
   socket.on('generateList2', (data) => {
     socket.join("room-" + data.roomNumber);
     io.sockets.in("room-" + data.roomNumber).emit("refreshList2");
   });
 
-    // Used to generate room with its members
+  // Used to generate room with its members
   socket.on("message", (data) => {
     // Comes from the front end; number was made in another route (room choice).
     let roomNumber = data.roomNumber;
     socket.join("room-" + roomNumber);
 
     let potentialRoom = socketRooms.find((x) => x.roomNumber === roomNumber);
+
     // Using the variable above, we can check if there IS a room or not
     if (typeof potentialRoom != "undefined") {
       // DEBUG: Checking our Logic
@@ -465,10 +483,11 @@ io.on("connection", (socket) => {
     potentialRoom = socketRooms.find((x) => x.roomNumber === roomNumber);
     roomMembers = potentialRoom.roomMembers;
 
-
+    // Emits data to everyone in a room
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
   });
 
+  // Emits data to reroute users in a room
   socket.on("newList", (data) => {
     socket.join("room-" + data.roomNumber);
     io.sockets.in("room-" + data.roomNumber).emit("navigate");
@@ -476,23 +495,15 @@ io.on("connection", (socket) => {
 
   // MAIN WORKHORSE FUNCTION. Gathers the SteamIDs of the room members and uses them to generate the massive list of shared games.
   // Sort by amount of time played and then generate shared list
-  // let memberCount = 0;
   socket.on("generate", async (data) => {
     const roomNumber = data.roomNumber;
     const roomMembers = socketRooms.find(
       (x) => x.roomNumber === roomNumber
     ).roomMembers;
 
-    // memberCount = Object.keys(roomMembers).length;
-    // console.log("MEMBERS" + memberCount)
-    // const roomSize = socketRooms.find(
-    //   (x) => x.roomNumber === roomNumber
-    // ).roomSize;
-    // socket.join("room-" + roomNumber);
-    // console.log("ROOM SIZE" + roomSize);
-    // console.log("ROOM SIZE" + roomSize);
-    // Query sets up ONLY multiplayer games & ones for the specific user.
+    // Queries all multiplayer games
     let query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1`;
+
     // Retrieve the users selected tags & reshape the SQL based on it.
     const tagSelection = data.tagSelection;
     const tagsPresent = !(tagSelection === null || tagSelection.trim() === "");
@@ -500,6 +511,7 @@ io.on("connection", (socket) => {
       query += ` AND tags LIKE '%${tagSelection}%'`;
     }
 
+    // Retrieve the users selected genres & reshape the SQL based on it.
     const categorySelection = data.categorySelection;
     const categoryPresent = !(
       categorySelection === null || categorySelection.trim() === ""
@@ -508,7 +520,8 @@ io.on("connection", (socket) => {
       query += ` AND genre LIKE '%${categorySelection}%'`;
     }
 
-    const priceSelection = data.priceSelection;
+    // Retrieve the users selected price range or selection & reshape the SQL based on it.
+    let priceSelection = data.priceSelection;
     const minPriceSelection = data.minPriceSelection;
     const maxPriceSelection = data.maxPriceSelection;
     if (priceSelection == `FREE`) {
@@ -529,9 +542,6 @@ io.on("connection", (socket) => {
     let gamePrices = [];
     let allPotentialTags = []; // for the drop-down
 
-    // DEBUG: Ensure the query we want is exactly that.
-    // console.log(query);
-
     // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
       const currentUserID = roomMembers[i][0];
@@ -543,10 +553,12 @@ io.on("connection", (socket) => {
         // TODO: Would it be better to use a games ID here? Can a game have the same name as another?
         const indexOfGame = sharedGameNames.indexOf(curGame.name);
         if (indexOfGame != -1) {
+
           // It IS THERE so curGame append the SteamID to the "current owners"
           ownedByWho[indexOfGame].push(i);
         } else {
-          // it IS NOT there so make a new entry with name, image, & link
+
+          // It IS NOT there so make a new entry with name, image, & link
           sharedGameNames.push(curGame.name);
           gameImages.push(curGame.header_image);
           gameLinks.push(curGame.store_url);
@@ -559,18 +571,22 @@ io.on("connection", (socket) => {
             prices.push(initial_price);
           }
           gamePrices.push(prices);
+
           // Add the SteamID to a new array and start the appending process
           let temp = [];
           temp.push(i);
           ownedByWho.push(temp);
+
           // Lets process the tags to send to the front end
           // TODO: We should probably also remove the current (or previously) selected tags so they don't get queried again from the database.
           allPotentialTags = maintainTags(curGame.tags, allPotentialTags);
         }
       });
 
+      // Locates the socket for that specific room
       socket.join("room-" + data.roomNumber);
     }
+
     // TODO: How to handle refreshes when a new user joins or leaves a room?
     // Finally emit the data to all room members INDIVIDUALLY so filtering options don't change the page for everyone.
     io.to(socket.id).emit("finalList", {
@@ -588,17 +604,14 @@ io.on("connection", (socket) => {
 
 });
 
-// app.get("/list", async (req, res) => {
-//   // let foundMembers = potentialRoom.roomMembers;
-//   // console.log("Members in room: " + foundMembers);
-//   res.render("list", { url: config.url});
-// });
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
   console.log(`Running Test.`);
 
     console.log(socketRooms);
+    // console.log(socketRooms[0].roomMembers);
+    // console.log(socketRooms[0].roomNumber);
 
   res.render("test");
 });
@@ -751,6 +764,7 @@ app.get('/leave', (req, res) => {
   res.render('room-choice');
 });
 
+// Starts server
 server.listen(3000, () => {
   console.log(`SocketIO Server has Started!`);
 });
