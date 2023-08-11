@@ -1,4 +1,4 @@
-<%- include('partials/header.ejs') %> 
+<%- include('partials/header.ejs', {title: `What Can We Play Today?`, stylesheet: `listPage.css`}) %> 
 <%- include('partials/navBarLogoutList.ejs') %> 
 
 <body onload="sendMessage()">
@@ -50,27 +50,26 @@
             <div id="roomMembersList">
                 <p class="leftHandLabels"> MEMBERS </p>
             </div>
+
             <p id="roomCodeList"> ROOM CODE </p>
-            <!-- TODO: Placeholder Number -->
-            <p id = "displayRoomNum"> </p>
-            <!-- TODO: Button for copying Room Code -->
-            <button id = "leave" style="background-color: red;"> Leave Room </button>
+            <p id="displayRoomNum"> </p>
+
+            <button id="copyRoomLink2" onclick="showSuccess(); copyFunction()"> COPY ROOM CODE </button>
+            <button id="leave"> LEAVE ROOM </button>
         </div>
 
     </div>
 </body>
 
 <script>
+  // Used for loading animation
   document.getElementById('listPageLayout').style.display = 'none';
+
+  // Setup for socket connection 
   const socket = io("<%= url %>");
   socket.on("connection");
-  
-  
-  // socket.on('navigate', function() {
-  //       window.location.href = "/list";
-  //   });
 
-
+  // Used for dynamic reload of page
   socket.on('refreshList', () =>  {
         location.reload();
     });
@@ -83,14 +82,7 @@
     window.location.href = "/leave";
   });
 
-  // let logout = document.getElementById("actualLogoutImg");
-  // logout.addEventListener('click', function(){
-  //   sessionStorage.clear();
-  //   socket.emit('generateList');
-  //   window.location.href = "/logout";
-  // });
-
-  // });
+  
   // If Tags are found, provide them a way to "remove" them.
   // For now, we'll just have a single button to clear and then reload the page.
   if (sessionStorage.getItem('tagSelection') || sessionStorage.getItem('categorySelection') || sessionStorage.getItem('priceSelection') || sessionStorage.getItem('minPriceSelection') || sessionStorage.getItem('maxPriceSelection')) {
@@ -111,38 +103,36 @@
     document.querySelector('#clearAllFiltersButton').appendChild(tempButton);
   }
 
-  // function showLoadingGif(){
-  //     document.getElementById('loading').classList.remove('hide');
-  //   }
-  //   function hideLoadingGif(){
-  //     document.getElementById('loading').classList.add('hide');
-  //   }
+
 // TODO: does everything need to be in sendMessage?
+// Connection used for sockets
   const sendMessage = () => {
-    // showLoadingGif();
+    // Initializes data of user from cookies
     let steamID = Cookies.get("steamID");
     let username = Cookies.get("username");
     let avatar = Cookies.get("avatar");
     let roomNumber = Cookies.get("roomNumber");
 
-
+    // Category selection functionality
     function filterBySelected(event) {
         const selected = event.target.value;
         sessionStorage.setItem('tagSelection', selected);
         window.location.reload();
     }
     
+    // Genre selection functionality
     function filterBySelected2(event) {
         const selected = event.target.value;
         sessionStorage.setItem('categorySelection', selected);
         window.location.reload();
     }
 
+    // Price range selection functionality
     function displayPriceRange() {
         const userInputMin = document.getElementById("inputPrice").value;
         const userInputMax = document.getElementById("inputPriceMax").value;
-        console.log("MIN INPUT:" + userInputMin);
-        console.log("MAX INPUT: " + userInputMax);
+        // console.log("MIN INPUT:" + userInputMin);
+        // console.log("MAX INPUT: " + userInputMax);
 
         sessionStorage.setItem('minPriceSelection', userInputMin);
         sessionStorage.setItem('maxPriceSelection', userInputMax);
@@ -163,7 +153,9 @@
     });
 
 
+    // Receives data then displays a list of games
     socket.on("finalList", (data) => {
+      // Initializes data used for the list
       const roomMembers = data.roomMembers;
       const sharedGameNames = data.games;
       const ownedByWho = data.owners;
@@ -173,8 +165,10 @@
       const gamePrices = data.prices;
       const categories = data.categories;
       const categoryArray = categories.map((str) => str.replace(/['"] + /g, ''));
-      console.log("ROOM MEMBERS" + roomMembers.length);
+      // console.log("ROOM MEMBERS" + roomMembers.length);
       //   console.log(roomMembers);
+
+      // Gets all the users and displays them together
         const roomMembersToAppend = document.querySelector('#roomMembersList');
         for (let i = 0; i < roomMembers.length; i++) {
             const userAvatar = document.createElement('img');
@@ -182,6 +176,7 @@
             userAvatar.alt = `Icon for ${roomMembers[i][1]}`;
             roomMembersToAppend.appendChild(userAvatar);
         }
+
         // console.log(roomMembers.length);
       // Quickly set our room number to the page.
       let currentRoomNum = document.getElementById('displayRoomNum');
@@ -189,6 +184,7 @@
       document.getElementById('animationContainer').style.display = 'none';
       document.getElementById('listPageLayout').style.display = 'flex';
 
+      // Creates dropdown menu for the categories
       function dropDownMenu1() {
         const menu = document.createElement("select");
         const title = document.createElement("option");
@@ -228,6 +224,7 @@
         window.location.reload();
       });
 
+      // Creates a dropdown menu for the genres
       function dropDownMenu2() {
         const menu = document.createElement("select");
         const title = document.createElement("option");
@@ -280,12 +277,14 @@
         window.location.reload();
       });
 
+      // Used for prices under $10
       const underTen = document.getElementById("underTen");
       underTen.addEventListener('click', () => {
         sessionStorage.setItem('priceSelection', underTen.textContent);
         window.location.reload();
       });
 
+      // Used for prices under $40
       const underFourty = document.getElementById("underFourty");
       underFourty.addEventListener('click', () => {
         sessionStorage.setItem('priceSelection', underFourty.textContent);
@@ -293,6 +292,31 @@
       });
 
       // Depending on our selected price we'll change the button styling to a different color.
+    
+
+      // TODO: Dollar signs on text fields. 
+      // Used to gather a price range inputted by the user
+      const priceRange = document.getElementById("displayPriceRange");
+      priceRange.addEventListener('click', () => {
+        let userInputMin = document.getElementById("inputPrice").value;
+        let userInputMax = document.getElementById("inputPriceMax").value;
+
+        userInputMin = parseInt(userInputMin);
+        userInputMax = parseFloat(userInputMax);
+
+        console.log(typeof userInputMax + "MAX CHECK");
+
+        if (userInputMin > userInputMax || userInputMin === "" || userInputMax === "" || userInputMin < 0 || userInputMax < 0 || isNaN(userInputMax) || isNaN(userInputMin)) {
+            jSuites.notification({
+                name: 'INVALID RANGE',
+            });
+        } else {
+            sessionStorage.setItem('minPriceSelection', userInputMin);
+            sessionStorage.setItem('maxPriceSelection', userInputMax);
+            window.location.reload();
+        }
+      });
+
       if (sessionStorage.getItem('priceSelection') == "FREE") {
         freeButton.style.color = "#B3EE11";
         freeButton.style.borderColor = "#B3EE11";
@@ -314,27 +338,7 @@
         underFourty.style.borderColor = "#FFFFFF";
       }
 
-      // TODO: Dollar signs on text fields. 
-      const priceRange = document.getElementById("displayPriceRange");
-      priceRange.addEventListener('click', () => {
-        let userInputMin = document.getElementById("inputPrice").value;
-        let userInputMax = document.getElementById("inputPriceMax").value;
-
-        userInputMin = parseFloat(userInputMin).toFixed(2);
-        userInputMax = parseFloat(userInputMax).toFixed(2);
-
-        if (userInputMin > userInputMax || userInputMin == "" || userInputMax == "" || userInputMin < 0 || userInputMax < 0) {
-            jSuites.notification({
-                name: 'INVALID RANGE',
-            });
-        } else {
-            sessionStorage.setItem('minPriceSelection', userInputMin);
-            sessionStorage.setItem('maxPriceSelection', userInputMax);
-            window.location.reload();
-        }
-      });
-
-      //Display tag of user's input for price range
+      // Display tag of user's input for price range
       let priceDiv = document.getElementById("pricePopupButton");
       let priceString1 = sessionStorage.getItem('minPriceSelection');
       let priceString2 = sessionStorage.getItem('maxPriceSelection');
@@ -348,12 +352,14 @@
         button3.textContent = "$" + priceString1 + " - $" + priceString2 + " \u00D7";
       }
       
+      // Reloads page with the price range inputed
       button3.addEventListener('click', () => {
         sessionStorage.setItem('minPriceSelection', '');
         sessionStorage.setItem('maxPriceSelection', '');
         window.location.reload();
       });
 
+      //TODO: add comment
       function invertOwners(someArr) {
         let temp = [];
         for (let i = 0; i < roomMembers.length; i++) {
@@ -362,6 +368,7 @@
         return filterOut(temp, someArr);
       }
 
+      //TODO: add comment
       function convertToUser(someArr) {
         let temp = ``;
         for (let i = 0; i < someArr.length; i++) {
@@ -370,11 +377,13 @@
         return temp;
       }
 
+      //TODO: add comment
       function filterOut(arr1, arr2) {
         const result = arr1.filter((x) => arr2.indexOf(x) == -1);
         return result;
       }
 
+      // Adds first two tags next to the game
       function buildTags(tagsStringForm) {
         if (tagsStringForm != '') {
             let temp = tagsStringForm.split(',');
@@ -387,7 +396,8 @@
             return '';
         }
       }
-      
+
+      // Adds prices next to the game
       function buildPrices(gamesPrices) {
         let toReturn = ``;
         if (gamesPrices[1] == null) {
@@ -408,6 +418,7 @@
         return toReturn;
       }
 
+      //Divs used to house the generated games
       let suggestDiv = document.getElementById("toGrab");
       let recommendDiv = document.querySelector("#recGames");
 
@@ -428,7 +439,7 @@
                 <div class="gameItem">
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
                     <div class="seperator">
-                        <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
+                        <a class="gameTitle" href="${gameLinks[i]}" target = "_blank"> ${sharedGameNames[i]}</a>
                         <div class="tagHolder">
                             ${tempTag}
                             ${tempPrice}
@@ -447,7 +458,7 @@
                 <div class="gameItem">
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
                     <div class="seperator">
-                        <a class="gameTitle" href="${gameLinks[i]}"> ${sharedGameNames[i]} </a>
+                        <a class="gameTitle" href="${gameLinks[i]}" target = "_blank"> ${sharedGameNames[i]} </a>
                         <div class="tagHolder">
                             ${tempTag}
                             ${tempPrice}
@@ -460,6 +471,25 @@
       }
     });
   };
+
+  function copyFunction() {
+        let copyRoomNum = document.getElementById('displayRoomNum');
+        let selection = window.getSelection();
+        let range = document.createRange();
+
+        range.selectNodeContents(copyRoomNum);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        document.execCommand('copy');
+    }
+
+    // Shows that the room code has been copied
+    function showSuccess() {
+        jSuites.notification({
+            name: 'Copied to Clipboard',
+        });
+    }
 
 
 </script>

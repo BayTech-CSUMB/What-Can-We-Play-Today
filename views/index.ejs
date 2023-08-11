@@ -1,26 +1,25 @@
-<%- include('partials/header.ejs') %> 
+<%- include('partials/header.ejs', {title: `What Can We Play Today?`, stylesheet: `homePage.css`}) %> 
 
 <div class="gradient-background" id="homePageGradient">
     <div class="background-box">
 
         <img id="logoHome" alt="What Can We Play Today Logo" src="/img/StandardImgLogo.png"/>
-
         <br>
-        <p style="color: white;"> <p>By using our site, you acknowledge that you have read and understand our </p>
+        <p style="color: white;"> <p>By using our site, you acknowledge that you have read and understand our <a href="/privacy-policy">PRIVACY POLICY</a></p>
         <br>
-        <a href="/privacy-policy">PRIVACY POLICY</a>
-    
+        
     </div>
     <div id="main-page-buttons">
-        <!-- <a href="/auth/steam"> -->
             <button id = "loginModal">STEAM LOGIN</button>
             <p style="color: white; font-size: larger; margin-top: 1rem;"> OR </p>
             <button id = "loginModal2">ALT LOGIN</button>
             <div id = "modal" class = "modal">
                 <div class = "modal-content">
                         <div class="background-box-pp">
-                    <span id = "back"> &times; </span>
-                    <h2>Disclaimer: Privacy Settings for Steam Users</h2>
+                            <div id="modalTopArea">
+                                <h2> Disclaimer: Privacy Settings for Steam Users </h2>
+                                <span id="back"> &times; </span>
+                            </div>
 
                     <p>In order for "What Can We Play Today" to function properly, your Steam profile and game details need to be set to public. Here's how you can change these settings:</p>
         
@@ -32,18 +31,16 @@
                         <li><strong>Set to Public</strong>: In the Privacy Settings, ensure that your profile status and game details are set to "Public".</li>
                     </ol>
         
-                    <p>Please refer to the screenshot below for a visual guide on how the settings should look like.</p>
+                    <p>Please refer to the video below if additional guidance is needed. </p>
         
-                    <!-- Add screenshot here -->
                     <div class = "video-content">
-                    <video width = "640" height = "360" controls>
+                    <video width = "480" height = "240" controls>
                         <source src = "/img/privSettings.mp4" type = "video/mp4">
                     </video>
                     </div>
 
                     <br>
                     <span id = "close"> I UNDERSTAND </span>
-
                 </div>
                 </div>
              </div>
@@ -64,11 +61,11 @@
                         <li><strong>Set to Public</strong>: In the Privacy Settings, ensure that your profile status and game details are set to "Public".</li>
                     </ol>
         
-                    <p>Please refer to the screenshot below for a visual guide on how the settings should look like.</p>
+                    <p>Please refer to the video below if additional guidance is needed.</p>
         
                     <!-- Add screenshot here -->
                     <div class = "video-content">
-                    <video width = "640" height = "360" controls>
+                    <video width = "480" height = "240" controls>
                         <source src = "/img/privSettings.mp4" type = "video/mp4">
                     </video>
                     <br>
@@ -81,39 +78,43 @@
     </div>
 </div>
 <script>
+    // Modal appears when steam login button is pressed
     let modalTrigger = document.getElementById('loginModal');
     var modal = document.getElementById("modal");
     modalTrigger.addEventListener('click', function(){
         modal.style.display = "flex";
-
     });
 
-
+    // Accept button redirects to login through steam
     var acceptButton = document.getElementById("close");
     acceptButton.addEventListener('click', function() {
         window.location.href = "/auth/steam";
     });
 
+    // Modal appears if user wants to use the ALT login
     let modalTrigger2 = document.getElementById('loginModal2');
     var modal2 = document.getElementById("modal2");
     modalTrigger2.addEventListener('click', function(){
         modal2.style.display = "flex";
     });
 
+    // Accept button redirects user to login using steam id only
     var acceptButton2 = document.getElementById("close2");
     acceptButton2.addEventListener('click', function() {
         window.location.href = "/alt-login";
     });
 
+    // Used to cancel modal
     let back = document.getElementById("back");
     back.addEventListener('click', function(){
         window.location.href = "/";
         modal.classList.remove("open");
     });
 
+    // Used to cancel modal
     let back2 = document.getElementById("back2");
     back2.addEventListener('click', function(){
         window.location.href = "/";
     });
 
-    </script>
+</script>

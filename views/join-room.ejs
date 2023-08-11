@@ -1,4 +1,4 @@
-<%- include('partials/header.ejs') %>
+<%- include('partials/header.ejs', {title: `What Can We Play Today?`, stylesheet: `joinPage.css`}) %>
 <%- include('partials/navbarBackLogout.ejs', {linkToPage: `/room-choice`}) %>
 
 <div id="animationContainer">
@@ -30,7 +30,10 @@
 </div>
 
 <script>
+    // Loading animation is hidden at the beginning
     document.getElementById('animationContainer').style.display = 'none';
+
+    // Function checks the validity of the room number
     function check() {
         var roomNumber = document.getElementById("roomnum1").value + document.getElementById("roomnum2").value +
                          document.getElementById("roomnum3").value + document.getElementById("roomnum4").value + 
@@ -40,6 +43,7 @@
             alert("Room number doesn't exist");
             return false;
         }
+
         // Used to send the room-number data to the back end
         document.getElementById("roomnum").value = roomNumber;
         
@@ -48,7 +52,8 @@
         document.querySelector(".gradient-background").style.display = "none";
         return true;
     }
-    
+
+    // Used to move cursor to the next box when adding room code
     function moveForward(currentBox, nextBox) {
         const currentValue = document.getElementById('roomnum' + currentBox).value;
 
@@ -57,6 +62,7 @@
         }
     }
 
+    // Used to move cursor to the previous box when backspace is pressed
     function moveBack(event, currentBox){
         const key = event.key;
         const currentValue = document.getElementById('roomnum' + currentBox).value;
