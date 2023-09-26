@@ -1,6 +1,17 @@
 // Critical for Express itself
 const express = require("express");
 const app = express();
+const fs = require('fs');
+
+// Ensure API Keys and Confidential Data don't get published to Github
+const config = require("./private/keys.json");
+
+const options = {
+  key: fs.readFileSync(config.keyPath),
+  cert: fs.readFileSync(config.certPath)
+};
+
+// require('./server.js');
 
 // Modules used to facilitate data transfer and storage
 const cookieParser = require("cookie-parser");
@@ -9,11 +20,10 @@ const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
 const axios = require("axios");
 
-const server = require("http").createServer(app);
+const server = require("https").createServer(options, app);
 // TODO: Double check what CORS policy will mean for our app.
 const io = require("socket.io")(server, { cors: { origin: "*" } });
-// Ensure API Keys and Confidential Data don't get published to Github
-const config = require("./private/keys.json");
+
 // Setting up a helper Wrapper library to make the Steam API much easier to use
 const steamWrapper = require("steam-js-api");
 steamWrapper.setKey(config.steamKey);
@@ -765,6 +775,11 @@ app.get('/leave', (req, res) => {
 });
 
 // Starts server
-server.listen(3000, () => {
-  console.log(`SocketIO Server has Started!`);
+// server.listen(80, () => {
+//   console.log(`SocketIO Server has Started!`);
+// });
+ 
+// TODO: Confirm weird HTTP issues
+server.listen(443, () => {
+  console.log('HTTPS server running on port 443');
 });
