@@ -46,4 +46,13 @@
         document.getElementById('animationContainer').style.display = 'flex';
         document.querySelector(".gradient-background").style.display = "none";
     }
+    
+    // This essentially prevents the user from going back w the browser and 
+    // locks them here on this page. Using this so we don't have issues with 
+    // users trying to get back to the Steam Page OR the List Page (assuming 
+    // they left a room and got back here).
+    history.pushState(null, null, window.location.href);
+    window.addEventListener('popstate', function () {
+        history.pushState(null, null, window.location.href);
+    });
 </script>
