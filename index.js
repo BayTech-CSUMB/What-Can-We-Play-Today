@@ -25,6 +25,23 @@ const moment = require("moment");
 // UNCOMMENT FOR DEV
 const server = require("http").createServer(app);
 
+// This creates another HTTP server; ensure the above is commented out as the 
+// extra servers running are only needed to redirect traffic to HTTPS.
+const http = require('http');
+const httpApp = express();
+
+// TODO: Check how to do this redirect better?
+httpApp.all('*', (req, res) => res.redirect(300, 'https://whatcanweplay.today'));
+// httpApp.use(function(req, res, next) {
+//   if (req.headers['x-forwarded-proto'] == 'http') {
+//     return res.redirect(301, `https://whatcanweplay.today` + req.url);
+//   } else {
+//     return next();
+//   }
+// });
+const httpServer = http.createServer(httpApp);
+httpServer.listen(80, () => console.log(`HTTP Redirecter Server Up on Port 80!`));
+
 // TODO: Double check what CORS policy will mean for our app.
 const io = require("socket.io")(server, { cors: { origin: "*" } });
 
