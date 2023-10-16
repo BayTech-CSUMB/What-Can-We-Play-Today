@@ -30,15 +30,8 @@ const server = require("http").createServer(app);
 const http = require('http');
 const httpApp = express();
 
-// TODO: Check how to do this redirect better?
-httpApp.all('*', (req, res) => res.redirect(300, 'https://whatcanweplay.today'));
-// httpApp.use(function(req, res, next) {
-//   if (req.headers['x-forwarded-proto'] == 'http') {
-//     return res.redirect(301, `https://whatcanweplay.today` + req.url);
-//   } else {
-//     return next();
-//   }
-// });
+// TODO: See if this can be set to only run on a production env
+httpApp.all('*', (req, res) => res.redirect(301, 'https://whatcanweplay.today'));
 const httpServer = http.createServer(httpApp);
 httpServer.listen(80, () => console.log(`HTTP Redirecter Server Up on Port 80!`));
 
@@ -51,6 +44,8 @@ steamWrapper.setKey(config.steamKey);
 
 // Necessary for Steam Oauth
 const SteamAuth = require("node-steam-openid");
+const { type } = require("os");
+const { diff } = require("semver");
 
 // Setup for Steam Oauth
 const steam = new SteamAuth({
@@ -172,9 +167,22 @@ function deleteUserFromRoom(roomNumber, userID) {
   }
 }
 
-// TODO: Make this dynamically generate a YYYY-MM-DD format.
+// Use inbuilt JS to compute the current date in a YYYY-MM-DD format.
 function generateDate() {
-  return `2023-07-20`;
+    const curDate = (new Date().toISOString().slice(0, 10));
+    return curDate;
+}
+
+// Utilize MomentJS to compute the difference between two dates for another 
+// function to use to refresh game price data if needed.
+function computeDateDiff(dateToCompare) {
+    const daysBeforeRequery = 3; // can be changed later.
+    // Convert dates to a MomentJS format & then compute the difference in days.
+    let prevDate = moment(dateToCompare);
+    let curDate = moment(generateDate());
+    let diffDate = curDate.diff(prevDate, 'days');
+
+    return (diffDate >= daysBeforeRequery);
 }
 
 // Used to get data that was not previously fetched using the game id
@@ -216,14 +224,6 @@ async function fetchGenresPrices(gameID) {
   return [genre, initial_price, final_price];
 }
 
-// TODO: Finish functionality
-function computeDateDiff(dateToCompare) {
-  const curDate = generateDate();
-
-  // TODO: Utilize current date & the to compare one and see how many days "past expiration" it is. If it's greater than or equal to 3, return TRUE otherwise return FALSE
-  return false; // placeholder return for now.
-}
-
 // Checks our database to see if we've got the game and then checks if the user is associated with said game
 async function checkGames(steamID) {
   // First we'll fetch the list of owned games per the users steamID.
@@ -262,9 +262,28 @@ async function checkGames(steamID) {
 
     // if the game is located we check if the user has the game in their database
     if (localGame) {
-      // IFF >= 3 days old then re-query
+      // IFF >= 3 days old then re-query. If the game is past it's "expiration" 
+      //   date we should go and reacquire the prices (in case of sales) and 
+      // update its database entry. 
       if (computeDateDiff(localGame.age)) {
-        // TODO: This entire thing.
+        // DEBUG: Check the game and its ID.
+        // console.log(localGame);
+        // console.log(localGame.gameID);
+
+        let temp = await fetchGenresPrices(localGame.gameID);
+        const initial_price = temp[1];
+        const final_price = temp[2];
+        const tempAge = generateDate();
+
+        // console.log(`${final_price} ${initial_price} ${tempAge} ${localGame.gameID}`);
+
+        // TODO: Could a single player game become a multiplayer one in the future?
+        db.prepare(`UPDATE Games SET price = ?, initial_price = ?, age = ? WHERE gameID = ?`).run(
+            final_price, 
+            initial_price,
+            tempAge,
+            localGame.gameID       
+        );
       }
       // If they don't have the game in their table we add it to their database else do nothing
       if (!userPotentialGame) {
@@ -665,10 +684,14 @@ app.get("/test", async (req, res) => {
 
 // DEBUG: For checking functions and other back-end code.
 app.get("/altTest", async (req, res) => {
-  console.log("Checking for new games to add...");
+//   console.log("Checking for new games to add...");
 
   // Set this to whomever's account to pre-add their games to the database
-  let steamID = `76561198016716226`;
+//   let steamID = `76561198016716226`;
+    // generateDate();
+    const pastDate = `2023-10-01`;
+    computeDateDiff(pastDate);
+    console.log(computeDateDiff(pastDate));
   // Note: re-copy the code from the function and modify it
   res.render("altTest");
 });
