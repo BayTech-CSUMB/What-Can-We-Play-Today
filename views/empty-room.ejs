@@ -46,18 +46,23 @@
      
     // Receives data from Back-end when other users join.
     socket.on('otherMsg', (data) => {
-                
+        let userImages = [];
         // Sets up the image div with the first user that joins
         let divAppend = document.getElementById('toGen');
-        let current = `<img src = "${data[0][2]}"">`;
-        divAppend.innerHTML = current;
-        
-        // Appends other users that join to the image div
-        for (let i = 1; i < data.length; i++) {
-            let HTML = `<img src = "${data[i][2]}"">`;
-            current += HTML;
+        // go through all user images and only add them to an output array if 
+        // they're not already there.
+        for (let i = 0; i < data.length; i++) {
+            if (!userImages.includes(data[i][2])) {
+                let imgEle = document.createElement('img');
+                imgEle.src = data[i][2];
+                userImages.push(imgEle);
+            }
         }
-        divAppend.innerHTML = current;
+        // clear the div before iterating through the user images and appending
+        divAppend.innerHTML = "";
+        for (let j = 0; j < userImages.length; j++) {
+            divAppend.appendChild(userImages[j]);
+        }
     });
 
     // Button used to dynamically reload page for all members
