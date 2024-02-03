@@ -25,15 +25,19 @@ const moment = require("moment");
 // UNCOMMENT FOR DEV
 const server = require("http").createServer(app);
 
-// This creates another HTTP server; ensure the above is commented out as the 
+// This creates another HTTP server; ensure the above is commented out as the
 // extra servers running are only needed to redirect traffic to HTTPS.
-const http = require('http');
+const http = require("http");
 const httpApp = express();
 
 // TODO: See if this can be set to only run on a production env
-httpApp.all('*', (req, res) => res.redirect(301, 'https://whatcanweplay.today'));
+httpApp.all("*", (req, res) =>
+  res.redirect(301, "https://whatcanweplay.today")
+);
 const httpServer = http.createServer(httpApp);
-httpServer.listen(80, () => console.log(`HTTP Redirecter Server Up on Port 80!`));
+httpServer.listen(80, () =>
+  console.log(`HTTP Redirecter Server Up on Port 80!`)
+);
 
 // TODO: Double check what CORS policy will mean for our app.
 const io = require("socket.io")(server, { cors: { origin: "*" } });
@@ -169,20 +173,20 @@ function deleteUserFromRoom(roomNumber, userID) {
 
 // Use inbuilt JS to compute the current date in a YYYY-MM-DD format.
 function generateDate() {
-    const curDate = (new Date().toISOString().slice(0, 10));
-    return curDate;
+  const curDate = new Date().toISOString().slice(0, 10);
+  return curDate;
 }
 
-// Utilize MomentJS to compute the difference between two dates for another 
+// Utilize MomentJS to compute the difference between two dates for another
 // function to use to refresh game price data if needed.
 function computeDateDiff(dateToCompare) {
-    const daysBeforeRequery = 3; // can be changed later.
-    // Convert dates to a MomentJS format & then compute the difference in days.
-    let prevDate = moment(dateToCompare);
-    let curDate = moment(generateDate());
-    let diffDate = curDate.diff(prevDate, 'days');
+  const daysBeforeRequery = 3; // can be changed later.
+  // Convert dates to a MomentJS format & then compute the difference in days.
+  let prevDate = moment(dateToCompare);
+  let curDate = moment(generateDate());
+  let diffDate = curDate.diff(prevDate, "days");
 
-    return (diffDate >= daysBeforeRequery);
+  return diffDate >= daysBeforeRequery;
 }
 
 // Used to get data that was not previously fetched using the game id
@@ -262,9 +266,9 @@ async function checkGames(steamID) {
 
     // if the game is located we check if the user has the game in their database
     if (localGame) {
-      // IFF >= 3 days old then re-query. If the game is past it's "expiration" 
-      //   date we should go and reacquire the prices (in case of sales) and 
-      // update its database entry. 
+      // IFF >= 3 days old then re-query. If the game is past it's "expiration"
+      //   date we should go and reacquire the prices (in case of sales) and
+      // update its database entry.
       if (computeDateDiff(localGame.age)) {
         // DEBUG: Check the game and its ID.
         // console.log(localGame);
@@ -278,12 +282,9 @@ async function checkGames(steamID) {
         // console.log(`${final_price} ${initial_price} ${tempAge} ${localGame.gameID}`);
 
         // TODO: Could a single player game become a multiplayer one in the future?
-        db.prepare(`UPDATE Games SET price = ?, initial_price = ?, age = ? WHERE gameID = ?`).run(
-            final_price, 
-            initial_price,
-            tempAge,
-            localGame.gameID       
-        );
+        db.prepare(
+          `UPDATE Games SET price = ?, initial_price = ?, age = ? WHERE gameID = ?`
+        ).run(final_price, initial_price, tempAge, localGame.gameID);
       }
       // If they don't have the game in their table we add it to their database else do nothing
       if (!userPotentialGame) {
@@ -517,6 +518,14 @@ io.on("connection", (socket) => {
   socket.on("message", (data) => {
     // Comes from the front end; number was made in another route (room choice).
     let roomNumber = data.roomNumber;
+    // Validate roomNumber to ensure it consists of exactly 5 digits
+    if (!/^\d{5}$/.test(roomNumber)) {
+      console.error("Invalid room number provided:", roomNumber);
+      // Optionally, send an error response back to the client to inform them of the invalid input
+      return; // Stop further execution for this message
+    }
+
+    // Proceed with the validated roomNumber
     socket.join("room-" + roomNumber);
 
     let potentialRoom = socketRooms.find((x) => x.roomNumber === roomNumber);
@@ -672,26 +681,26 @@ io.on("connection", (socket) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
-  console.log(`Running Test.`);
+  console.log();
   // console.log(socketRooms);
   // console.log(socketRooms[0].roomMembers);
   // console.log(socketRooms[0].roomNumber);
-  const tempTime = moment().toString();
-  console.log(`ERROR: Failed something idk; ${tempTime}`);
+//   const tempTime = moment().toString();
+//   console.log(`ERROR: Failed something idk; ${tempTime}`);
 
-  res.render("test");
+//   res.render("test");
 });
 
 // DEBUG: For checking functions and other back-end code.
 app.get("/altTest", async (req, res) => {
-//   console.log("Checking for new games to add...");
+  //   console.log("Checking for new games to add...");
 
   // Set this to whomever's account to pre-add their games to the database
-//   let steamID = `76561198016716226`;
-    // generateDate();
-    const pastDate = `2023-10-01`;
-    computeDateDiff(pastDate);
-    console.log(computeDateDiff(pastDate));
+  //   let steamID = `76561198016716226`;
+  // generateDate();
+  const pastDate = `2023-10-01`;
+  computeDateDiff(pastDate);
+  console.log(computeDateDiff(pastDate));
   // Note: re-copy the code from the function and modify it
   res.render("altTest");
 });
@@ -758,8 +767,8 @@ app.get("/leave", (req, res) => {
 });
 
 // TODO: Make this look like a 404 Page, not super important rn though.
-app.get('*', (req, res) => {
-    res.send("Error 404: Hit Back on your Browser. You shouldn't be here.");
+app.get("*", (req, res) => {
+  res.send("Error 404: Hit Back on your Browser. You shouldn't be here.");
 });
 
 // ======== SERVER LINES ========
