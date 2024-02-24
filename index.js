@@ -19,6 +19,8 @@ const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
 const axios = require("axios");
 const moment = require("moment");
+csrf = require('lusca').csrf;
+app.use(csrf());
 
 // UNCOMMENT FOR PROD
 // const server = require("https").createServer(options, app);
