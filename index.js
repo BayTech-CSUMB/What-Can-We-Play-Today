@@ -63,6 +63,15 @@ const steam = new SteamAuth({
   apiKey: config.steamKey,
 });
 
+// Utilizing a rate limiter to ensure we don't get DOS'ed
+const rateLimiter = require('express-rate-limit')
+const limiter = rateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+});
+
+app.use(limiter);
+
 // Tell Express which Templating Engine we're using
 app.set("view engine", "ejs");
 // Specify the Folder for Statics
