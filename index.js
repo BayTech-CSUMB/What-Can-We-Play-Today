@@ -5,25 +5,30 @@ const app = express();
 // Ensure API Keys and Confidential Data don't get published to Github
 const config = require("./private/keys.json");
 
-// UNCOMMENT FOR PROD
-// const fs = require("fs");
-// const options = {
-//   key: fs.readFileSync(config.keyPath),
-//   cert: fs.readFileSync(config.certPath)
-// };
+// Ensures prod environment has access to files for HTTPS certification
+let fs;
+let options;
+if (process.env.ENVIRO == "prod") {
+    fs = require("fs");
+    options = {
+      key: fs.readFileSync(config.keyPath),
+      cert: fs.readFileSync(config.certPath)
+    };
+}
 
 // Modules used to facilitate data transfer and storage
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
-const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
 const axios = require("axios");
 const moment = require("moment");
 
-// UNCOMMENT FOR PROD
-// const server = require("https").createServer(options, app);
-// UNCOMMENT FOR DEV
-const server = require("http").createServer(app);
+let server;
+if (process.env.ENVIRO=="prod") {
+    server = require("https").createServer(options, app);
+} else { // dev
+    server = require("http").createServer(app);
+}
 
 // This creates another HTTP server; ensure the above is commented out as the
 // extra servers running are only needed to redirect traffic to HTTPS.
@@ -57,15 +62,6 @@ const steam = new SteamAuth({
   returnUrl: config.url + "/auth/steam/authenticate",
   apiKey: config.steamKey,
 });
-
-// Ensure this doesn't negatively impact before final removal.
-// Setup for keeping track of Users temporary data.
-// const { types } = require("util");
-// const { parse } = require("path");
-// app.use(
-//   bodyParser.urlencoded({ extended: true }),
-//   bodyParser.json({ extended: true })
-// );
 
 // Tell Express which Templating Engine we're using
 app.set("view engine", "ejs");
@@ -681,7 +677,7 @@ io.on("connection", (socket) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
-  console.log();
+  console.log(process.env.ENVIRO);
   // console.log(socketRooms);
   // console.log(socketRooms[0].roomMembers);
   // console.log(socketRooms[0].roomNumber);
@@ -772,11 +768,6 @@ app.get("*", (req, res) => {
 });
 
 // ======== SERVER LINES ========
-
-// Starts server
-// server.listen(80, () => {
-//   console.log(`SocketIO Server has Started!`);
-// });
 
 // TODO: Confirm weird HTTP issues and or attempt to re-route port 80 traffic to 443
 server.listen(443, () => {

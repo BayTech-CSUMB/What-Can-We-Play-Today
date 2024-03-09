@@ -3,3 +3,4 @@ private/*
 //Put this in your .gitignore file
 //Ignore all Node Module Folders Recursively
 **node_modules
+process.env
