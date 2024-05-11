@@ -131,4 +131,25 @@
         /* TODO: Hide the OR text and have the flex box scale the buttons properly */
         /* display: flexbox; */
     }
+
+    /* Changed certain position parameters to fit mobile scaling better */
+    .background-box-pp {
+        max-width: 100%;
+    }
+
+    .modal {
+        height: 100%;
+        padding-top: 10%;
+    }
+
+    .modal-content {
+        position: relative;
+        width: 100%;
+        transform: translate(-50%, -10%);
+    }
+
+    #back {
+        top: 0px;
+        font-size: 30px;
+    }
 }
