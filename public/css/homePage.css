@@ -103,3 +103,63 @@
     /* Reduce the padding */
     box-shadow: 0 3px 7px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 }
+
+/* For Mobile Scaling */
+@media all and (max-width: 500px) {
+    /* Make sure our background box scales to the whole width. Then remove the bottom Box shadow so it all appears to be one page. */
+    .background-box {
+        max-width: 100vw;
+        box-shadow: none;
+        padding: 5vh;
+    }
+
+    /* Ensure we follow the intended mobile design w/ a singular page color. */
+    body {
+        background-color: var(--boxBackground);
+    }
+
+    /* Also disable our gradient so we follow oru design intent. */
+    .gradient-background {
+        background-image: none;
+    }
+
+    /* Remove margin so buttons are nearer to the rest of the page content. */
+    #main-page-buttons {
+        margin-top: 0;
+    }
+
+    button#loginModal, button#loginModal2 {
+        padding: 3vh 4vw;
+        font-size: 1.1rem;
+    }
+
+    #orText {
+        /* TODO: Hide the OR text and have the flex box scale the buttons properly */
+        /* display: flexbox; */
+    }
+
+    /* Changed certain position parameters to fit mobile scaling better */
+    .background-box-pp {
+        max-width: 100%;
+    }
+
+    .modal {
+        height: 100%;
+        padding-top: 10%;
+    }
+
+    .modal-content {
+        position: relative;
+        width: 100%;
+        transform: translate(-50%, -10%);
+    }
+
+    .video-content {
+        transform: scale(0.75);
+    }
+
+    #back, #back2 {
+        top: -20px;
+        font-size: 40px;
+    }
+}

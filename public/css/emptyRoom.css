@@ -13,7 +13,11 @@ body {
 }
 
 /* Set most of the text to white */
-h1, h2, a, p, label {
+h1,
+h2,
+a,
+p,
+label {
     color: white;
 }
 
@@ -42,7 +46,7 @@ h1, h2, a, p, label {
 
 /* Specific Hover color for links */
 a:hover {
-    color:#9FE544;
+    color: #9FE544;
 }
 
 /* Generic Green Button by Default */
@@ -152,6 +156,7 @@ button:hover {
     .background-box {
         max-width: 100vw;
         box-shadow: none;
+        padding: 0;
     }
 
     /* Ensure we follow the intended mobile design w/ a singular page color. */

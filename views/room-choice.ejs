@@ -1,4 +1,4 @@
-<%- include('partials/header.ejs', {title: `What Can We Play Today?`, stylesheet: `generalStyles.css`}) %> 
+<%- include('partials/header.ejs', {title: `What Can We Play Today?`, stylesheet: `roomChoice.css`}) %> 
 <%- include('partials/navbarLogout.ejs') %>
 
 <div id="animationContainer">
@@ -17,12 +17,12 @@
         <div id="roomChoiceButtons">
             <form action="/room-choice" method="post">
                 <input type="hidden" name="role" value="Host" />
-                <button type="submit" style="margin: 5px" onclick="displayAnimation()"> CREATE ROOM</button>
+                <button class="selectorButtons" type="submit" style="margin: 5px" onclick="displayAnimation()"> CREATE ROOM</button>
             </form>
             
             <form action="/join-room" method="get">
                 <input type="hidden" name="role" value="Member" />
-                <button type="submit" style="margin: 5px">JOIN ROOM</button>
+                <button  class="selectorButtons" type="submit" style="margin: 5px">JOIN ROOM</button>
             </form>
         </div>
     </div>

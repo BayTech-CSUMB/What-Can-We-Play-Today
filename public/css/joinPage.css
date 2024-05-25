@@ -44,3 +44,11 @@
     color: #B4B4B4;
     font-size: 1.25rem;
 }
+
+/* For Mobile Scaling */
+@media all and (max-width: 500px) {
+    .background-box {
+        max-width: 90vw;
+        padding: 0;
+    }
+}
