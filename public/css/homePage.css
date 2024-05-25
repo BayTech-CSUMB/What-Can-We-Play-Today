@@ -110,6 +110,7 @@
     .background-box {
         max-width: 100vw;
         box-shadow: none;
+        padding: 5vh;
     }
 
     /* Ensure we follow the intended mobile design w/ a singular page color. */
@@ -125,6 +126,11 @@
     /* Remove margin so buttons are nearer to the rest of the page content. */
     #main-page-buttons {
         margin-top: 0;
+    }
+
+    button#loginModal, button#loginModal2 {
+        padding: 3vh 4vw;
+        font-size: 1.1rem;
     }
 
     #orText {
@@ -148,8 +154,12 @@
         transform: translate(-50%, -10%);
     }
 
-    #back {
-        top: 0px;
-        font-size: 30px;
+    .video-content {
+        transform: scale(0.75);
+    }
+
+    #back, #back2 {
+        top: -20px;
+        font-size: 40px;
     }
 }

@@ -199,14 +199,4 @@ button:hover {
         top: 0px;
         font-size: 30px;
     }
-
-    #userId {
-        font-size: 30px;
-        width: 80vw;
-    }
-
-    #altUserLogin {
-        padding: 2.5vh 8vw;
-        font-size: 1.1rem;
-    }
 }

@@ -208,4 +208,8 @@ button:hover {
     div#roomChoiceButtons {
         margin-top: 3vh;
     }
+
+    div#userAvatar {
+        padding: 2vh;
+    }
 }
