@@ -495,6 +495,7 @@ app.post("/alt-login", async (req, res) => {
 
     let username = user[0].personaname;
     let profileImg = user[0].avatarmedium;
+    console.log(`${username} information has been fetched!`);
 
     res.cookie("steamID", steamID);
     res.cookie("username", username);
@@ -686,8 +687,8 @@ io.on("connection", (socket) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
-  console.log(process.env.ENVIRO);
-  // console.log(socketRooms);
+//   console.log(process.env.ENVIRO);
+  console.log(socketRooms);
   // console.log(socketRooms[0].roomMembers);
   // console.log(socketRooms[0].roomNumber);
 //   const tempTime = moment().toString();

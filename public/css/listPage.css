@@ -223,4 +223,50 @@
     font-size: 1.5rem;
 }
 
+/* For Mobile Scaling */
+@media all and (max-width: 500px) {
+    body {
+        background-color: #243C4F;
+    }
 
+    #leftHandList {
+        display: none;
+    }
+
+    #rightHandList {
+        display: none;
+    }
+
+    .gameItem {
+        margin: 1rem;
+        width: 90vw;
+        /* height: 15vh; */
+        /* margin: 1.5rem;
+        display: flex;
+        flex-direction: row;
+        background-color: var(--boxBackground);
+        width: 55vw; */
+        /* Key for Lift Off effect */
+        /* transition: all .3s ease-in-out; */
+        align-items: center;
+    }
+
+    .gameTag {
+        margin-top: 0.5vh;
+        padding: 0.1rem;
+
+    }
+
+    .gameImage {
+        max-height: 10vh;
+    }
+
+    #toGrab {
+        align-items: normal;
+    }
+
+    .seperator {
+        margin-left: 0.5rem;
+        margin-top: 0.5rem;
+    }
+}
