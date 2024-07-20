@@ -229,6 +229,19 @@
         background-color: #243C4F;
     }
 
+    .gradient-background {
+        width: 100vw;
+        height: max-content;
+    }
+
+    .gameTitle {
+        display: none;
+    }
+
+    #recGames .seperator {
+        display: none;
+    }
+
     #leftHandList {
         display: none;
     }
@@ -257,9 +270,11 @@
 
     }
 
-    .gameImage {
-        max-height: 10vh;
-    }
+    /* Changes are redundant, as original CSS has the same values. */
+    /* .gameImage {
+        max-height: 15vh;
+        /* max-height: 10vh; */
+    } */
 
     #toGrab {
         align-items: normal;
@@ -268,5 +283,11 @@
     .seperator {
         margin-left: 0.5rem;
         margin-top: 0.5rem;
+    }
+
+    .roomMembers {
+        margin-right: auto;
+        margin-top: auto;
+        margin-bottom: auto;
     }
 }
