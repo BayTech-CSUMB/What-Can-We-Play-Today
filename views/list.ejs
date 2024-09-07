@@ -454,7 +454,9 @@
                 </div>
             `;
           } else { // Case for EVERYONE in the room owns the game
+            // TODO: Currently this code applies to ALL devices, later we want to make sure this ONLY appears for Mobile (or at least can only be triggered on mobile).
             suggestDiv.innerHTML += `
+            <div id="mobileModalWrapper${i}">
                 <div class="gameItem">
                     <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
                     <div class="seperator">
@@ -465,8 +467,28 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div id="${sharedGameNames[i]}Modal" class="modal">
+                    <div class="modal-content">
+                        <p> ${sharedGameNames[i]} </p>
+                        <span class="back"> &times; </span>
+                    </div>
+            </div>
                 `;
-          }
+            }
+            // After the IF statement, we'll make a modal for the game card.
+            // TODO: See above todo, this currently is created for all devices.
+            let modalTrigger = document.getElementById(`mobileModalWrapper${i}`);
+            let modal = document.getElementById(`${sharedGameNames[i]}Modal`);
+            modalTrigger.addEventListener('click', function(){
+                modal.style.display = "flex";
+            });
+            // 
+            // let otherModalTrigger = document.getElementById(`otherMobileModalWrapper${i}`);
+            // let otherModal = document.getElementById(`other${sharedGameNames[i]}Modal`);
+            // otherModalTrigger.addEventListener('click', function(){
+            //     modal.style.display = "flex";
+            // });
         }
       }
     });
