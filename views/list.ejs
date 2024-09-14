@@ -67,6 +67,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
   document.getElementById("listPageLayout").style.display = "none";
 
   // Setup for socket connection
+// TODO: see if there's an alternate way to throw this URL into a function of sorts.
   const socket = io("<%= url %>");
   socket.on("connection");
 
@@ -475,6 +476,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
           } else {
             // Case for EVERYONE in the room owns the game
             // TODO: Currently this code applies to ALL devices, later we want to make sure this ONLY appears for Mobile (or at least can only be triggered on mobile).
+            // TODO: convert to native JS items.
             suggestDiv.innerHTML += `
             <div id="mobileModalWrapper${i}">
                 <div class="gameItem">
@@ -491,24 +493,28 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
             <div id="${sharedGameNames[i]}Modal" class="modal">
                     <div class="modal-content">
                         <p> ${sharedGameNames[i]} </p>
-                        <span class="back"> &times; </span>
+                        <span id="back${i}" class="back"> &times; </span>
                     </div>
             </div>
                 `;
           }
-          // After the IF statement, we'll make a modal for the game card.
-          // TODO: See above todo, this currently is created for all devices.
+        }
+
+        // After we created our game items, create in individual modal for each of them w/ relevant game data.
+        // TODO: See above todo, this currently is created for all devices.
+        for (let i = 0; i < sharedGameNames.length; i++) {
           let modalTrigger = document.getElementById(`mobileModalWrapper${i}`);
           let modal = document.getElementById(`${sharedGameNames[i]}Modal`);
           modalTrigger.addEventListener("click", function () {
             modal.style.display = "flex";
           });
-          //
-          // let otherModalTrigger = document.getElementById(`otherMobileModalWrapper${i}`);
-          // let otherModal = document.getElementById(`other${sharedGameNames[i]}Modal`);
-          // otherModalTrigger.addEventListener('click', function(){
-          //     modal.style.display = "flex";
-          // });
+
+          let back = document.getElementById(`back${i}`);
+            back.addEventListener('click', function(){
+                // window.location.href = "/list";
+                const tempModal = document.getElementById(`${sharedGameNames[i]}Modal`);
+                tempModal.style.display = "none"; 
+            });
         }
       }
     });
