@@ -259,6 +259,8 @@ async function checkGames(steamID) {
     let final_price = 0;
     let initial_price = 0;
 
+    // TODO: Add Short Description to our games so we can provide extended details on a game.
+
     // FIRST we query our database to see if we HAVE the game or not
     const localGame = db
       .prepare("SELECT * FROM Games WHERE gameID = ?")

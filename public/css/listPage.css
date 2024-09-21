@@ -243,6 +243,21 @@
     background-color: var(--mainBackground);
 }
 
+.gameTitleModal {
+    font-size: x-large;
+}
+
+.modal-content {
+    text-align: left;   
+}
+
+/* TODO: make Modal rise from the bottom of the screen instead of "appear" */
+/* TODO: Make modal "swipe-able" too (later goal) */
+
+.back {
+    text-align: center;
+}
+
 /* ===================== "Removable" Tags on List ===================== */
 
 .indivTag {
