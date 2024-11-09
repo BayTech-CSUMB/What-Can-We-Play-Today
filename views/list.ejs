@@ -439,7 +439,9 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       }
 
       // Divs used to house the generated games
+    // To Grab is the Shared List of Games already owned.
       let suggestDiv = document.getElementById("toGrab");
+    // Recommended are games that some users own but some don't.
       let recommendDiv = document.querySelector("#recGames");
 
       // This IF is a workaround to ensure we don't get DUPLICATE games in our list.
@@ -447,31 +449,49 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
         suggestDiv.childNodes.length === 0 &&
         recommendDiv.childNodes.length === 0
       ) {
+        // sharedGameNames is the list of games from the backend algo that 
         for (let i = 0; i < sharedGameNames.length; i++) {
           // IF the game is NOT owned by everyone, do the top case.
 
           let tempTag = buildTags(gameTags[i]);
           let tempPrice = buildPrices(gamePrices[i]);
+        // Checks if the current game is equal to the number of players in the room (i.e. if everyone owns this game or not).
+        //     This top case is if only some users own it (e.g. going to be a Recommended game).
           if (ownedByWho[i].length != roomMembers.length) {
             let users = convertToUser(invertOwners(ownedByWho[i]));
             // TODO: Use actual JS methods to build these items instead of hard coding strings
             recommendDiv.innerHTML += `
-                <div class="gameItem">
-                    <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
-                    <div class="seperator">
-                        <a class="gameTitle" href="${gameLinks[i]}" target = "_blank"> ${sharedGameNames[i]}</a>
+                <div id="mobileModalWrapper${i}">
+                    <div class="gameItem">
+                        <img class="gameImage" src="${gameImages[i]}" alt="Icon for ${sharedGameNames[i]}">
+                        <div class="seperator">
+                            <a class="gameTitle" href="${gameLinks[i]}" target = "_blank"> ${sharedGameNames[i]}</a>
+                            <div class="tagHolder">
+                                ${tempTag}
+                                ${tempPrice}
+                            </div>
+                        </div>
+                        <div class="roomMembers">
+                            <p class="gameMemberText"> NOT OWNED BY </p>
+                            <div class="roomMemberImages">  
+                                ${users}    
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="${sharedGameNames[i]}Modal" class="modal">
+                    <div class="modal-content">
+                        <img src="${gameImages[i]}" alt="Image for ${sharedGameNames[i]}">
+                        <p class="gameTitleModal"> ${sharedGameNames[i]} </p>
                         <div class="tagHolder">
                             ${tempTag}
                             ${tempPrice}
                         </div>
+                        <p> Lorem Ipsum </p>
+                        <a href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
+                        <span id="back${i}" class="back"> &times; </span>
                     </div>
-                    <div class="roomMembers">
-                        <p class="gameMemberText"> NOT OWNED BY </>
-                        <div class="roomMemberImages">
-                            ${users}    
-                        </div>
-                    </div>
-                </div>
+            </div>
             `;
           } else {
             // Case for EVERYONE in the room owns the game
