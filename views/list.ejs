@@ -172,6 +172,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       const categoryArray = categories.map((str) =>
         str.replace(/['"] + /g, "")
       );
+      const descriptions = data.descriptions;
       // console.log("ROOM MEMBERS" + roomMembers.length);
       //   console.log(roomMembers);
 
@@ -487,7 +488,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
                             ${tempTag}
                             ${tempPrice}
                         </div>
-                        <p> Lorem Ipsum </p>
+                        <p> ${descriptions[i]} </p>
                         <a href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
                         <span id="back${i}" class="back"> &times; </span>
                     </div>
@@ -518,7 +519,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
                             ${tempTag}
                             ${tempPrice}
                         </div>
-                        <p> Lorem Ipsum </p>
+                        <p> ${descriptions[i]} </p>
                         <a href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
                         <span id="back${i}" class="back"> &times; </span>
                     </div>

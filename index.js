@@ -203,6 +203,7 @@ async function fetchGenresPrices(gameID) {
   let initial_price = 0;
   let final_price = 0;
   let genre = ``;
+  let shortDesc = ``;
 
   if (result2[`${gameID}`].success == true) {
     // ensures no de-listed games
@@ -224,13 +225,15 @@ async function fetchGenresPrices(gameID) {
     } else {
       genre = `Single-player`;
     }
+
+    shortDesc = result2[`${gameID}`].data.short_description;
   } else {
     genre = `Single-player`;
     initial_price = 0;
     final_price = 0;
   }
 
-  return [genre, initial_price, final_price];
+  return [genre, initial_price, final_price, shortDesc];
 }
 
 // Checks our database to see if we've got the game and then checks if the user is associated with said game
@@ -258,6 +261,7 @@ async function checkGames(steamID) {
     let genre = "";
     let final_price = 0;
     let initial_price = 0;
+    let short_description = 0;
 
     // TODO: Add Short Description to our games so we can provide extended details on a game.
 
@@ -310,6 +314,7 @@ async function checkGames(steamID) {
       final_price = temp[2];
       let is_multiplayer = 1;
       let age = generateDate();
+      short_description = temp[3];
 
       // If its single player
       if (!genre.includes(`Multi-player`)) {
@@ -318,7 +323,7 @@ async function checkGames(steamID) {
 
       console.log(`Added ${gameName} - ${gameID}!`);
       db.prepare(
-        `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url) VALUES (?,?,?,?,?,?,?,?,?,?)`
+        `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
         `${gameID}`,
         gameName,
@@ -329,7 +334,8 @@ async function checkGames(steamID) {
         initial_price,
         `${is_multiplayer}`,
         gamePic,
-        gameURL
+        gameURL,
+        short_description
       );
 
       db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
@@ -627,6 +633,7 @@ io.on("connection", (socket) => {
     let gameTags = [];
     let gamePrices = [];
     let allPotentialTags = []; // for the drop-down
+    let gameDesc = [];
 
     // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
@@ -655,6 +662,7 @@ io.on("connection", (socket) => {
             prices.push(initial_price);
           }
           gamePrices.push(prices);
+          gameDesc.push(curGame.description);
 
           // Add the SteamID to a new array and start the appending process
           let temp = [];
@@ -683,6 +691,7 @@ io.on("connection", (socket) => {
       tags: gameTags,
       prices: gamePrices,
       categories: allPotentialTags,
+      descriptions: gameDesc
     });
   });
 });
