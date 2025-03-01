@@ -483,13 +483,13 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
                 <div id="${sharedGameNames[i]}Modal" class="modal">
                     <div class="modal-content">
                         <img src="${gameImages[i]}" alt="Image for ${sharedGameNames[i]}">
-                        <p class="gameTitleModal"> ${sharedGameNames[i]} </p>
+                        <h1 class="gameTitleModal"> ${sharedGameNames[i]} </h1>
                         <div class="tagHolder">
                             ${tempTag}
-                            ${tempPrice}
                         </div>
-                        <p> ${descriptions[i]} </p>
-                        <a href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
+                        ${tempPrice}
+                        <p class="gameModalDesc"> ${descriptions[i]} </p>
+                        <a class="gameModalLink" href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
                         <span id="back${i}" class="back"> &times; </span>
                     </div>
             </div>
@@ -514,13 +514,13 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
             <div id="${sharedGameNames[i]}Modal" class="modal">
                     <div class="modal-content">
                         <img src="${gameImages[i]}" alt="Image for ${sharedGameNames[i]}">
-                        <p class="gameTitleModal"> ${sharedGameNames[i]} </p>
+                        <h1 class="gameTitleModal"> ${sharedGameNames[i]} </h1>
                         <div class="tagHolder">
                             ${tempTag}
-                            ${tempPrice}
                         </div>
-                        <p> ${descriptions[i]} </p>
-                        <a href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
+                        ${tempPrice}
+                        <p class="gameModalDesc"> ${descriptions[i]} </p>
+                        <a class="gameModalLink" href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
                         <span id="back${i}" class="back"> &times; </span>
                     </div>
             </div>

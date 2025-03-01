@@ -21,6 +21,10 @@
     display: flex;
 }
 
+.modal-content .tagHolder {
+    justify-content: center;
+}
+
 /* The entire game card for each individual game */
 .gameItem {
     margin: 1.5rem;
@@ -244,7 +248,19 @@
 }
 
 .gameTitleModal {
-    font-size: x-large;
+    font-size: 2rem !important;
+    text-align: center;
+    padding-top: 2vh;
+}
+
+.gameModalDesc {
+    text-align: left;
+    font-size: 1rem;
+    padding: 0 2vw;
+}
+
+.gameModalLink {
+    text-align: center;
 }
 
 .modal-content {
