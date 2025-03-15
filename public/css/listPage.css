@@ -21,6 +21,10 @@
     display: flex;
 }
 
+.modal-content .tagHolder {
+    justify-content: center;
+}
+
 /* The entire game card for each individual game */
 .gameItem {
     margin: 1.5rem;
@@ -103,6 +107,43 @@
 
 #leftHandList {
     flex: 2;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    padding-top: 50%;
+    /* left: 100; */
+    width: 100%;
+    height: 30%;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    display: flex;
+    background-color: var(--boxBackground);
+    /* justify-content: center;
+    align-items: center; */
+    color: white;
+    position: absolute;
+    width: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#modalTopArea {
+    display: flex;
+}
+
+#modalTopArea h2 {
+    flex: 9;
+}
+
+.back {
+    top: -20px;
+    font-size: 40px;
 }
 
 /* All components for the RIGHT hand column */
@@ -206,6 +247,33 @@
     background-color: var(--mainBackground);
 }
 
+.gameTitleModal {
+    font-size: 2rem !important;
+    text-align: center;
+    padding-top: 2vh;
+}
+
+.gameModalDesc {
+    text-align: left;
+    font-size: 1rem;
+    padding: 0 2vw;
+}
+
+.gameModalLink {
+    text-align: center;
+}
+
+.modal-content {
+    text-align: left;   
+}
+
+/* TODO: make Modal rise from the bottom of the screen instead of "appear" */
+/* TODO: Make modal "swipe-able" too (later goal) */
+
+.back {
+    text-align: center;
+}
+
 /* ===================== "Removable" Tags on List ===================== */
 
 .indivTag {
@@ -274,7 +342,7 @@
     /* .gameImage {
         max-height: 15vh;
         /* max-height: 10vh; */
-    } */
+    /* } */
 
     #toGrab {
         align-items: normal;
@@ -289,5 +357,16 @@
         margin-right: auto;
         margin-top: auto;
         margin-bottom: auto;
+    }
+
+    .modal {
+        height: 100%;
+        padding-top: 10%;
+    }
+
+    .modal-content {
+        position: relative;
+        width: 100%;
+        transform: translate(-50%, -10%);
     }
 }
