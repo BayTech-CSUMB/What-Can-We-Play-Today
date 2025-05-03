@@ -236,6 +236,37 @@ async function fetchGenresPrices(gameID) {
   return [genre, initial_price, final_price, shortDesc];
 }
 
+
+async function quickGameUpdate() {
+    const localDB = db.prepare("SELECT gameID FROM Games");
+    const localGame = localDB.all();
+    let tempGameData = [];
+
+    // Use Promise.all to wait for all async operations
+    await Promise.all(localGame.map(async (curGame) => {
+        const steamURL = `https://store.steampowered.com/api/appdetails?appids=${curGame.gameID}&l=en`;
+        const response2 = await fetch(steamURL);
+        const result2 = await response2.json();
+        let final_price = 0; 
+
+        if (result2[`${curGame.gameID}`].success == true) {
+            let priceOverview = result2[`${curGame.gameID}`].data.price_overview;
+            if (typeof priceOverview != `undefined`) {
+                final_price = priceOverview.final_formatted;
+                final_price = parseFloat(final_price.replace("$", ""));
+            }
+        }
+        // Push to array
+        tempGameData.push([curGame.gameID, final_price]);
+    }));
+    // Now we have an array with update gameIDs and prices, run through and update our DB with that information.
+    tempGameData.forEach((curGame) => {
+        db.prepare(
+              `UPDATE Games SET price = ? WHERE gameID = ?`
+            ).run(curGame[1], curGame[0]);
+    });
+}
+
 // Checks our database to see if we've got the game and then checks if the user is associated with said game
 async function checkGames(steamID) {
   // First we'll fetch the list of owned games per the users steamID.
@@ -698,14 +729,7 @@ io.on("connection", (socket) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
-//   console.log(process.env.ENVIRO);
-  console.log(socketRooms);
-  // console.log(socketRooms[0].roomMembers);
-  // console.log(socketRooms[0].roomNumber);
-//   const tempTime = moment().toString();
-//   console.log(`ERROR: Failed something idk; ${tempTime}`);
-
-//   res.render("test");
+    quickGameUpdate();
 });
 
 // DEBUG: For checking functions and other back-end code.
