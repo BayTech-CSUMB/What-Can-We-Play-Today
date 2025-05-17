@@ -204,6 +204,8 @@ async function fetchGenresPrices(gameID) {
   let final_price = 0;
   let genre = ``;
   let shortDesc = ``;
+  let gameName = ``;
+  let headerImg = ``;
 
   if (result2[`${gameID}`].success == true) {
     // ensures no de-listed games
@@ -227,13 +229,15 @@ async function fetchGenresPrices(gameID) {
     }
 
     shortDesc = result2[`${gameID}`].data.short_description;
+    gameName = result2[`${gameID}`].data.name;
+    headerImg = result2[`${gameID}`].data.header_image;
   } else {
     genre = `Single-player`;
     initial_price = 0;
     final_price = 0;
   }
 
-  return [genre, initial_price, final_price, shortDesc];
+  return [genre, initial_price, final_price, shortDesc, gameName, headerImg];
 }
 
 
@@ -264,6 +268,28 @@ async function quickGameUpdate() {
         db.prepare(
               `UPDATE Games SET price = ? WHERE gameID = ?`
             ).run(curGame[1], curGame[0]);
+    });
+}
+
+async function deepGameUpdate() {
+    const localDB = db.prepare("SELECT gameID FROM Games");
+    const localGame = localDB.all();
+    let tempGameData = [];
+
+    // NOTE: we are purposely omitting querying the SteamSpy API for additional tags due to the limiting factor of 1 query per minute. 
+    // While nice for coverage, would be too much work to build around and it'd be better to cut off our reliance on that API in general instead.
+
+    // Use Promise.all to wait for all async operations
+    await Promise.all(localGame.map(async (curGame) => {
+        let temp = await fetchGenresPrices(curGame.gameID);
+        // Push to array: gameID, gameName, genre, initial & final price, shortDesc, headerImg
+        tempGameData.push([curGame.gameID, temp[4], temp[0], temp[1], temp[2], temp[3], temp[5]]);
+    }));
+    // Now we have an array with update gameIDs and prices, run through and update our DB with that information.
+    tempGameData.forEach((curGame) => {
+        db.prepare(
+              `UPDATE Games SET name = ?, genre = ?, price = ?, initial_price = ?, header_image = ?, description = ? WHERE gameID = ?`
+            ).run(curGame[1], curGame[2], curGame[4], curGame[3], curGame[6], curGame[5], curGame[0]);
     });
 }
 
@@ -729,7 +755,7 @@ io.on("connection", (socket) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
-    quickGameUpdate();
+    deepGameUpdate();
 });
 
 // DEBUG: For checking functions and other back-end code.
