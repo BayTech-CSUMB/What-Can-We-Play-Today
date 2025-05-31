@@ -772,6 +772,38 @@ app.get("/altTest", async (req, res) => {
   res.render("altTest");
 });
 
+app.get("/demo", async (req, res) => {
+    res.cookie("steamID", `76561199516233321`);
+    res.cookie("username", `drslurpeemd`);
+    res.cookie("avatar", `https://avatars.steamstatic.com/b9fa08a1e25a9dadaebbab031b6b2974502416fa_medium.jpg`);
+
+    let roomNumber = Math.floor(Math.random() * 90000) + 10000;
+    roomNumber = roomNumber.toString();
+    // Ensures that room numbers are random and unique so we don't have colliding room IDs.
+    while (existingRooms.includes(roomNumber)) {
+        roomNumber = Math.floor(Math.random() * 90000) + 10000;
+        roomNumber = roomNumber.toString();
+    }
+
+    let demoRoom = new Room(roomNumber, [
+        [
+          `76561198110151106`,
+          `divinusmessor`,
+          `https://avatars.steamstatic.com/175253b0d40f2bdf52f35622e6a4a0a104b5f444_medium.jpg`,
+        ],
+      ]);
+    socketRooms.push(demoRoom);
+    existingRooms.push(roomNumber);
+
+    // console.log(socketRooms);
+    // console.log(existingRooms);
+    // socketRooms.forEach(item => {
+    //     console.log(item.roomMembers);
+    // });
+    res.cookie("roomNumber", roomNumber);
+    res.redirect("/empty-room");
+});
+
 // Intended to be the FULL logout from Steam & the Room.
 app.get("/logout", (req, res) => {
   const roomNumber = req.cookies.roomNumber;

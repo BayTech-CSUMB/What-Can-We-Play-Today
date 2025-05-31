@@ -8,6 +8,11 @@
 /* Container for all the central buttons on the home page */
 #main-page-buttons {
     margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5vh;
 }
 
 .modal {
