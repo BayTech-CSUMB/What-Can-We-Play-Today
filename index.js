@@ -204,6 +204,8 @@ async function fetchGenresPrices(gameID) {
   let final_price = 0;
   let genre = ``;
   let shortDesc = ``;
+  let gameName = ``;
+  let headerImg = ``;
 
   if (result2[`${gameID}`].success == true) {
     // ensures no de-listed games
@@ -227,13 +229,68 @@ async function fetchGenresPrices(gameID) {
     }
 
     shortDesc = result2[`${gameID}`].data.short_description;
+    gameName = result2[`${gameID}`].data.name;
+    headerImg = result2[`${gameID}`].data.header_image;
   } else {
     genre = `Single-player`;
     initial_price = 0;
     final_price = 0;
   }
 
-  return [genre, initial_price, final_price, shortDesc];
+  return [genre, initial_price, final_price, shortDesc, gameName, headerImg];
+}
+
+
+async function quickGameUpdate() {
+    const localDB = db.prepare("SELECT gameID FROM Games");
+    const localGame = localDB.all();
+    let tempGameData = [];
+
+    // Use Promise.all to wait for all async operations
+    await Promise.all(localGame.map(async (curGame) => {
+        const steamURL = `https://store.steampowered.com/api/appdetails?appids=${curGame.gameID}&l=en`;
+        const response2 = await fetch(steamURL);
+        const result2 = await response2.json();
+        let final_price = 0; 
+
+        if (result2[`${curGame.gameID}`].success == true) {
+            let priceOverview = result2[`${curGame.gameID}`].data.price_overview;
+            if (typeof priceOverview != `undefined`) {
+                final_price = priceOverview.final_formatted;
+                final_price = parseFloat(final_price.replace("$", ""));
+            }
+        }
+        // Push to array
+        tempGameData.push([curGame.gameID, final_price]);
+    }));
+    // Now we have an array with update gameIDs and prices, run through and update our DB with that information.
+    tempGameData.forEach((curGame) => {
+        db.prepare(
+              `UPDATE Games SET price = ? WHERE gameID = ?`
+            ).run(curGame[1], curGame[0]);
+    });
+}
+
+async function deepGameUpdate() {
+    const localDB = db.prepare("SELECT gameID FROM Games");
+    const localGame = localDB.all();
+    let tempGameData = [];
+
+    // NOTE: we are purposely omitting querying the SteamSpy API for additional tags due to the limiting factor of 1 query per minute. 
+    // While nice for coverage, would be too much work to build around and it'd be better to cut off our reliance on that API in general instead.
+
+    // Use Promise.all to wait for all async operations
+    await Promise.all(localGame.map(async (curGame) => {
+        let temp = await fetchGenresPrices(curGame.gameID);
+        // Push to array: gameID, gameName, genre, initial & final price, shortDesc, headerImg
+        tempGameData.push([curGame.gameID, temp[4], temp[0], temp[1], temp[2], temp[3], temp[5]]);
+    }));
+    // Now we have an array with update gameIDs and prices, run through and update our DB with that information.
+    tempGameData.forEach((curGame) => {
+        db.prepare(
+              `UPDATE Games SET name = ?, genre = ?, price = ?, initial_price = ?, header_image = ?, description = ? WHERE gameID = ?`
+            ).run(curGame[1], curGame[2], curGame[4], curGame[3], curGame[6], curGame[5], curGame[0]);
+    });
 }
 
 // Checks our database to see if we've got the game and then checks if the user is associated with said game
@@ -698,14 +755,7 @@ io.on("connection", (socket) => {
 
 // DEBUG: For checking HTML elements on a safe page.
 app.get("/test", async (req, res) => {
-//   console.log(process.env.ENVIRO);
-  console.log(socketRooms);
-  // console.log(socketRooms[0].roomMembers);
-  // console.log(socketRooms[0].roomNumber);
-//   const tempTime = moment().toString();
-//   console.log(`ERROR: Failed something idk; ${tempTime}`);
-
-//   res.render("test");
+    deepGameUpdate();
 });
 
 // DEBUG: For checking functions and other back-end code.
@@ -720,6 +770,38 @@ app.get("/altTest", async (req, res) => {
   console.log(computeDateDiff(pastDate));
   // Note: re-copy the code from the function and modify it
   res.render("altTest");
+});
+
+app.get("/demo", async (req, res) => {
+    res.cookie("steamID", `76561199516233321`);
+    res.cookie("username", `drslurpeemd`);
+    res.cookie("avatar", `https://avatars.steamstatic.com/b9fa08a1e25a9dadaebbab031b6b2974502416fa_medium.jpg`);
+
+    let roomNumber = Math.floor(Math.random() * 90000) + 10000;
+    roomNumber = roomNumber.toString();
+    // Ensures that room numbers are random and unique so we don't have colliding room IDs.
+    while (existingRooms.includes(roomNumber)) {
+        roomNumber = Math.floor(Math.random() * 90000) + 10000;
+        roomNumber = roomNumber.toString();
+    }
+
+    let demoRoom = new Room(roomNumber, [
+        [
+          `76561198110151106`,
+          `divinusmessor`,
+          `https://avatars.steamstatic.com/175253b0d40f2bdf52f35622e6a4a0a104b5f444_medium.jpg`,
+        ],
+      ]);
+    socketRooms.push(demoRoom);
+    existingRooms.push(roomNumber);
+
+    // console.log(socketRooms);
+    // console.log(existingRooms);
+    // socketRooms.forEach(item => {
+    //     console.log(item.roomMembers);
+    // });
+    res.cookie("roomNumber", roomNumber);
+    res.redirect("/empty-room");
 });
 
 // Intended to be the FULL logout from Steam & the Room.

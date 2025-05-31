@@ -11,8 +11,9 @@
     </div>
     <div id="main-page-buttons">
             <button id = "loginModal">STEAM LOGIN</button>
-            <p id="orText" style="color: white; font-size: larger; margin-top: 1rem;"> OR </p>
-            <button id = "loginModal2">ALT LOGIN</button>
+            <!-- <p id="orText" style="color: white; font-size: larger; margin-top: 1rem;"> OR </p> -->
+            <button id = "loginModal2">ALTERNATE LOGIN</button>
+            <button id = "demo"> DEMO </button>
             <div id = "modal" class = "modal">
                 <div class = "modal-content">
                         <div class="background-box-pp">
@@ -91,6 +92,12 @@
         window.location.href = "/auth/steam";
     });
 
+    // Demo button redirects the user to the website demo feature
+    var demoButton = document.getElementById("demo");
+    demoButton.addEventListener('click', function() {
+        window.location.href = "/demo";
+    });
+    
     // Modal appears if user wants to use the ALT login
     let modalTrigger2 = document.getElementById('loginModal2');
     var modal2 = document.getElementById("modal2");
