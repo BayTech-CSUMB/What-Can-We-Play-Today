@@ -16,14 +16,15 @@
     </div>
     <div id="main-page-buttons">
             <button id = "loginModal">STEAM LOGIN</button>
-            <p style="color: white; font-size: larger; margin-top: 1rem;"> OR </p>
-            <button id = "loginModal2">ALT LOGIN</button>
+            <!-- <p id="orText" style="color: white; font-size: larger; margin-top: 1rem;"> OR </p> -->
+            <button id = "loginModal2">ALTERNATE LOGIN</button>
+            <button id = "demo"> DEMO </button>
             <div id = "modal" class = "modal">
                 <div class = "modal-content">
                         <div class="background-box-pp">
                             <div id="modalTopArea">
-                                <h2> Disclaimer: Privacy Settings for Steam Users </h2>
                                 <span id="back"> &times; </span>
+                                <h2> Disclaimer: Privacy Settings for Steam Users </h2>
                             </div>
 
                     <p>In order for "What Can We Play Today" to function properly, your Steam profile and game details need to be set to public. Here's how you can change these settings:</p>
@@ -96,6 +97,12 @@
         window.location.href = "/auth/steam";
     });
 
+    // Demo button redirects the user to the website demo feature
+    var demoButton = document.getElementById("demo");
+    demoButton.addEventListener('click', function() {
+        window.location.href = "/demo";
+    });
+    
     // Modal appears if user wants to use the ALT login
     let modalTrigger2 = document.getElementById('loginModal2');
     var modal2 = document.getElementById("modal2");
@@ -121,6 +128,14 @@
     back2.addEventListener('click', function(){
         window.location.href = "/";
     });
+
+    // Used to display a pop up message telling the user they're logged out
+    function showLogout() {
+        jSuites.notification({
+            name: 'Successfully Logged Out!',
+        });
+    }
+    showLogout();
 
     // New code (same as found in room-choice.ejs) that prevents a user from 
     // going back w/ their browser to prevent unwanted behavior w certain pages

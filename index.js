@@ -832,6 +832,8 @@ app.get("/logout", (req, res) => {
   res.clearCookie("avatar");
   res.clearCookie("roomNumber");
 
+  // While it'd be nice to use just normal index ("/") we have to use alt for now to prevent users from hitting back on their browser and breaking the site.
+  // This also lets us display a "logout" message properly to users. 
   res.render("alt-index");
 });
 
