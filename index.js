@@ -91,6 +91,8 @@ function Room(roomNumber, roomMembers) {
   this.roomMembers = roomMembers;
   this.roomSize = 0;
 }
+// TODO: we have roomSize but never use it. 
+// A fix for the above is to do daily purging of "empty" rooms as w/out regular clearing of the web app, the room structure will continue to keep growing.
 
 // Hard coded users for testing
 let mainTestingRoom = new Room(`99999`, [
@@ -511,6 +513,7 @@ app.get("/join-room", (req, res) => {
 
 // Gets data from front end and then adds user to the room if the code is valid
 app.post("/join-room", async (req, res) => {
+  // Our other main workhorse function, here we check the users entire steam library & adds them to the database if they're not in there already. Must be done either when a user makes a room or joins one.
   await checkGames(req.cookies.steamID);
   let potentialRoomNum = req.body.roomnum;
 
@@ -524,6 +527,7 @@ app.post("/join-room", async (req, res) => {
 
 // Renders list page
 app.get("/list", async (req, res) => {
+  // two guard clauses here to redirect users who shouldn't be in list w/out a steam ID & room number.
   if (req.cookies.roomNumber == null && req.cookies.steamID == null) {
     res.redirect("/");
   } else if (req.cookies.roomNumber == null) {
@@ -538,6 +542,7 @@ app.get("/empty-room", async (req, res) => {
   if (req.cookies.steamID == null) {
     res.redirect("/");
   } else {
+    // Our other main workhorse function, here we check the users entire steam library & adds them to the database if they're not in there already. Must be done either when a user makes a room or joins one.
     await checkGames(req.cookies.steamID);
 
     res.render("empty-room", {
@@ -547,7 +552,7 @@ app.get("/empty-room", async (req, res) => {
   }
 });
 
-//Used for alt login
+// Used for the alternate Steam ID based login.
 app.post("/alt-login", async (req, res) => {
   try {
     let steamID = req.body.userId;
@@ -567,6 +572,8 @@ app.post("/alt-login", async (req, res) => {
     res.cookie("avatar", profileImg);
     res.redirect(303, "room-choice");
   } catch {
+    // TODO: could we display a pop up to the user saying that we can't find anything?
+    // TODO: a specific status code from Steam 429 shows up when we've reached our API limit from them, could display that too.
     console.log("Could not fetch information...");
   }
 });
@@ -760,26 +767,126 @@ app.get("/test", async (req, res) => {
 
 // DEBUG: For checking functions and other back-end code.
 app.get("/altTest", async (req, res) => {
-  //   console.log("Checking for new games to add...");
+    // this is currently the code from checkGames() but modified w/ some starting variables to ensure that only a set amount of games are loaded at once.
+    const steamID = `76561198016716226`;
+    const gameLimit = 100;
 
-  // Set this to whomever's account to pre-add their games to the database
-  //   let steamID = `76561198016716226`;
-  // generateDate();
-  const pastDate = `2023-10-01`;
-  computeDateDiff(pastDate);
-  console.log(computeDateDiff(pastDate));
-  // Note: re-copy the code from the function and modify it
-  res.render("altTest");
+    await steamWrapper
+    .getOwnedGames(steamID, null, true)
+    .then((result) => {
+      gameCount = result.data.count;
+      gameInfo = result.data.games;
+    })
+    .catch(console.error);
+
+  // We iterate through the users' games using the data from the above function
+  for (let curGame = 0; curGame < gameLimit; curGame++) {
+    const gameName = gameInfo[curGame].name;
+    const gamePic = gameInfo[curGame].url_store_header;
+    const gameURL = gameInfo[curGame].url_store;
+    const gameID = gameInfo[curGame].appID;
+
+    // Variables that are et later with API fetches
+    let tags = "";
+    let genre = "";
+    let final_price = 0;
+    let initial_price = 0;
+    let short_description = 0;
+
+    // TODO: Add Short Description to our games so we can provide extended details on a game.
+
+    // FIRST we query our database to see if we HAVE the game or not
+    const localGame = db
+      .prepare("SELECT * FROM Games WHERE gameID = ?")
+      .get(`${gameID}`);
+
+    // Then check if the user has the local game registered in the database
+    const userPotentialGame = db
+      .prepare("SELECT * FROM Users WHERE userID = ? AND gameID = ?")
+      .get([`${steamID}`, `${gameID}`]);
+
+    // if the game is located we check if the user has the game in their database
+    if (localGame) {
+      // IFF >= 3 days old then re-query. If the game is past it's "expiration"
+      //   date we should go and reacquire the prices (in case of sales) and
+      // update its database entry.
+      if (computeDateDiff(localGame.age)) {
+        // DEBUG: Check the game and its ID.
+        // console.log(localGame);
+        // console.log(localGame.gameID);
+
+        let temp = await fetchGenresPrices(localGame.gameID);
+        const initial_price = temp[1];
+        const final_price = temp[2];
+        const tempAge = generateDate();
+
+        // console.log(`${final_price} ${initial_price} ${tempAge} ${localGame.gameID}`);
+
+        // TODO: Could a single player game become a multiplayer one in the future?
+        db.prepare(
+          `UPDATE Games SET price = ?, initial_price = ?, age = ? WHERE gameID = ?`
+        ).run(final_price, initial_price, tempAge, localGame.gameID);
+      }
+      // If they don't have the game in their table we add it to their database else do nothing
+      if (!userPotentialGame) {
+        db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?, ?)`).run(
+          steamID,
+          `${gameID}`
+        );
+      }
+    } else {
+      // Case if the game is not located in the database
+      // We query game and add it to the Games table along with the users personal table
+      tags = await fetchTags(gameID);
+      let temp = await fetchGenresPrices(gameID);
+      genre = temp[0];
+      initial_price = temp[1];
+      final_price = temp[2];
+      let is_multiplayer = 1;
+      let age = generateDate();
+      short_description = temp[3];
+
+      // If its single player
+      if (!genre.includes(`Multi-player`)) {
+        is_multiplayer = 0;
+      }
+
+      console.log(`Added ${gameName} - ${gameID}!`);
+      db.prepare(
+        `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+      ).run(
+        `${gameID}`,
+        gameName,
+        genre,
+        tags,
+        age,
+        final_price,
+        initial_price,
+        `${is_multiplayer}`,
+        gamePic,
+        gameURL,
+        short_description
+      );
+
+      db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
+        steamID,
+        `${gameID}`
+      );
+    }
+  }
 });
 
+// Route to demo the core functionality of the site, the game list generation page. /
 app.get("/demo", async (req, res) => {
+    // Setup our "user" as an alt account
     res.cookie("steamID", `76561199516233321`);
     res.cookie("username", `drslurpeemd`);
     res.cookie("avatar", `https://avatars.steamstatic.com/b9fa08a1e25a9dadaebbab031b6b2974502416fa_medium.jpg`);
 
+    // Reuse code snippet from above to generate a random room, so that users can demo in "safe" environments w/out joining each other.
+    // TODO: maybe could turn this into a function?
     let roomNumber = Math.floor(Math.random() * 90000) + 10000;
     roomNumber = roomNumber.toString();
-    // Ensures that room numbers are random and unique so we don't have colliding room IDs.
     while (existingRooms.includes(roomNumber)) {
         roomNumber = Math.floor(Math.random() * 90000) + 10000;
         roomNumber = roomNumber.toString();
