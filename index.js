@@ -991,7 +991,7 @@ server.listen(443, () => {
 });
 
 // Here is where we setup our daily quick updates.
-cron.schedule('* * * * *', () => {
+cron.schedule('0 0 * * *', () => {
     // get the number of games updated in total from our quickUpdate function
     const numOfGames = quickGameUpdate();
     const date = new Date(); // add both game count & month/day to output logs
