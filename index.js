@@ -22,6 +22,8 @@ app.use(cookieParser());
 const fetch = require("node-fetch");
 const axios = require("axios");
 const moment = require("moment");
+// Library for scheduling daily quick updates & periodic deep updates
+const cron = require('node-cron');
 
 let server;
 if (process.env.ENVIRO=="prod") {
@@ -271,6 +273,8 @@ async function quickGameUpdate() {
               `UPDATE Games SET price = ? WHERE gameID = ?`
             ).run(curGame[1], curGame[0]);
     });
+    
+    return tempGameData.length;
 }
 
 async function deepGameUpdate() {
@@ -984,4 +988,12 @@ app.get("*", (req, res) => {
 // TODO: Confirm weird HTTP issues and or attempt to re-route port 80 traffic to 443
 server.listen(443, () => {
   console.log("HTTPS server running on port 443");
+});
+
+// Here is where we setup our daily quick updates.
+cron.schedule('* * * * *', () => {
+    // get the number of games updated in total from our quickUpdate function
+    const numOfGames = quickGameUpdate();
+    const date = new Date(); // add both game count & month/day to output logs
+    console.log(`Successfully updated games ${numOfGames} on ${date.getMonth()+1}-${date.getDate()}!`);
 });
