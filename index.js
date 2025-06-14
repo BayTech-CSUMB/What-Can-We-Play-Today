@@ -578,7 +578,7 @@ app.post("/alt-login", async (req, res) => {
   } catch {
     // TODO: could we display a pop up to the user saying that we can't find anything?
     // TODO: a specific status code from Steam 429 shows up when we've reached our API limit from them, could display that too.
-    console.log("Could not fetch information...");
+    console.log("ALT LOGIN: Could not fetch information...");
   }
 });
 
@@ -997,10 +997,11 @@ server.listen(443, () => {
   console.log("HTTPS server running on port 443");
 });
 
-// Here is where we setup our daily quick updates.
-cron.schedule('0 0 * * *', () => {
+// Here is where we setup our daily quick updates. Currently set to 9am.
+cron.schedule('0 9 * * *', () => {
     // get the number of games updated in total from our quickUpdate function
-    const numOfGames = quickGameUpdate();
-    const date = new Date(); // add both game count & month/day to output logs
-    console.log(`Successfully updated games ${numOfGames} on ${date.getMonth()+1}-${date.getDate()}!`);
+    // TODO: this was throwing 429 Errors? Could add some error checking incase this is sending to many requests.
+    // const numOfGames = quickGameUpdate();
+    // const date = new Date(); // add both game count & month/day to output logs
+    // console.log(`Successfully updated games ${numOfGames} on ${date.getMonth()+1}-${date.getDate()}!`);
 });
