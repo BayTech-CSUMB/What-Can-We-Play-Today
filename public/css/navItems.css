@@ -71,3 +71,13 @@ nav {
 #navLog #logoutNavButton {
     flex: 0.5;
 }
+
+@media all and (max-width: 500px) {
+    #actualLogoutImg {
+        max-width: 10vw;
+    }
+
+    #logo {
+        max-height: 7.5vh;
+    }
+}

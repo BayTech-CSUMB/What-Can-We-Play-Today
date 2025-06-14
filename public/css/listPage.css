@@ -318,9 +318,18 @@
         display: none;
     }
 
+    .tagHolder {
+        flex-direction: column;
+    }
+
+    .tagHolder p {
+        margin: 0.5vh 0;
+        padding: 0;
+    }
+
     .gameItem {
-        margin: 1rem;
-        width: 90vw;
+        margin: 1vh 0;
+        width: 95vw;
         /* height: 15vh; */
         /* margin: 1.5rem;
         display: flex;
@@ -335,7 +344,7 @@
     .gameTag {
         margin-top: 0.5vh;
         padding: 0.1rem;
-
+        font-size: clamp(1rem, 3vw, 2rem);
     }
 
     /* Changes are redundant, as original CSS has the same values. */
@@ -345,12 +354,12 @@
     /* } */
 
     #toGrab {
-        align-items: normal;
+        align-items: center;
     }
 
     .seperator {
         margin-left: 0.5rem;
-        margin-top: 0.5rem;
+        margin-top: 0;
     }
 
     .roomMembers {

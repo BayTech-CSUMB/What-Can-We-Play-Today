@@ -195,4 +195,8 @@ button:hover {
         top: 0px;
         font-size: 30px;
     }
+
+    .jnotification-container {
+        max-width: 90vw;
+    }
 }
