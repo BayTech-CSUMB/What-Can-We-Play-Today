@@ -566,4 +566,18 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       name: "Copied to Clipboard",
     });
   }
+
+      // Utilizing jSuite notifs to give a simple popup for users in Demo mode
+      function demoNotification() {
+        jSuites.notification({
+            name: 'Welcome to Games List',
+            message: `This is the list of all shared games amongst the Room's current users. By scrolling down, you can also see the games that certain users might not have, making it easy to find new games the group can play! Feel free to try sorting by filters like game genres above OR click on a game to get more information on it.`,
+            autoHide: false
+        });
+    }
+    const cookieResult = Cookies.get('isDemo');
+    if (cookieResult == `true`) {
+        demoNotification();
+    }
+
 </script>

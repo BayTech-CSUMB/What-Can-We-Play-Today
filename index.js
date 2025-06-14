@@ -886,6 +886,7 @@ app.get("/demo", async (req, res) => {
     res.cookie("steamID", `76561199516233321`);
     res.cookie("username", `drslurpeemd`);
     res.cookie("avatar", `https://avatars.steamstatic.com/b9fa08a1e25a9dadaebbab031b6b2974502416fa_medium.jpg`);
+    res.cookie("isDemo", "true");
 
     // Reuse code snippet from above to generate a random room, so that users can demo in "safe" environments w/out joining each other.
     // TODO: maybe could turn this into a function?
@@ -906,11 +907,6 @@ app.get("/demo", async (req, res) => {
     socketRooms.push(demoRoom);
     existingRooms.push(roomNumber);
 
-    // console.log(socketRooms);
-    // console.log(existingRooms);
-    // socketRooms.forEach(item => {
-    //     console.log(item.roomMembers);
-    // });
     res.cookie("roomNumber", roomNumber);
     res.redirect("/empty-room");
 });
@@ -942,6 +938,7 @@ app.get("/logout", (req, res) => {
   res.clearCookie("username");
   res.clearCookie("avatar");
   res.clearCookie("roomNumber");
+  res.clearCookie("isDemo");
 
   // While it'd be nice to use just normal index ("/") we have to use alt for now to prevent users from hitting back on their browser and breaking the site.
   // This also lets us display a "logout" message properly to users. 
@@ -956,6 +953,7 @@ app.get("/leave", (req, res) => {
     const roomNumber = req.cookies.roomNumber;
     const curUsersID = req.cookies.steamID;
     let potentialRoom = socketRooms.find((x) => x.roomNumber === roomNumber);
+    const isDemo = req.cookies.isDemo;
 
     if (potentialRoom) {
       // our room was found so delete the user
@@ -974,7 +972,16 @@ app.get("/leave", (req, res) => {
     }
 
     res.clearCookie("roomNumber");
-    res.render("room-choice");
+    if (isDemo == `true`) {
+        // Since a user might try to leave a demo, this should just in a sense act as "logout" and clear their cookies & bring them back to the homepage.
+        res.clearCookie("steamID");
+        res.clearCookie("username");
+        res.clearCookie("avatar");
+        res.clearCookie("isDemo");
+        res.redirect("/");
+    } else {
+        res.render("room-choice");
+    } 
   }
 });
 

@@ -114,5 +114,18 @@
             name: 'Copied to Clipboard!',
         });
     }
+
+    // Utilizing jSuite notifs to give a simple popup for users in Demo mode
+    function demoNotification() {
+        jSuites.notification({
+            name: 'Welcome to the Demo!',
+            message: `After logging in via Steam. Users can either Create Rooms or Join other pre-existing ones, which leads to this shared Room page. Once in this room, any user can generate the list of shared games amongst all users. Click Generate List to proceed!`,
+            autoHide: false
+        });
+    }
+    const cookieResult = Cookies.get('isDemo');
+    if (cookieResult == `true`) {
+        demoNotification();
+    }
     
 </script>

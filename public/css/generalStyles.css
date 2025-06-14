@@ -25,7 +25,8 @@ h1, h2, a, p, label {
     flex-direction: column;
     background-color: var(--boxBackground);
     text-align: center;
-    padding: 12vh;
+    padding: clamp(6vh, 6vmin, 8vh);
+    /* padding: 12vh; */
     box-shadow: 0 3px 7px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 }
 
