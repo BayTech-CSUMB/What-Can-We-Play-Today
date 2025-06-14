@@ -468,7 +468,14 @@ app.get("/auth/steam/authenticate", async (req, res) => {
 
 //Used in case users want to login through their steam id
 app.get("/alt-login", (req, res) => {
-  res.render("alt-login");
+    // We try to decode a previous Steam ID from the URI
+    let steamID = decodeURIComponent(req.query.id);
+    // If it doesn't exist we'll just set it to empty so the page doesn't 
+    // load a big "undefined" in the input field.
+    if (steamID === `undefined`) {
+        steamID = ``;
+    }
+    res.render("alt-login", {"steamID": steamID});
 });
 
 // Users get shown the CREATE or JOIN room buttons. Here they'll start the process of generating a Room Number and allowing others to join them.
@@ -576,9 +583,14 @@ app.post("/alt-login", async (req, res) => {
     res.cookie("avatar", profileImg);
     res.redirect(303, "room-choice");
   } catch {
-    // TODO: could we display a pop up to the user saying that we can't find anything?
-    // TODO: a specific status code from Steam 429 shows up when we've reached our API limit from them, could display that too.
+    // TODO: a specific status code from Steam 429 shows up when we've reached 
+    // our API limit from them, could display that too & other more specific 
+    // messages.
     console.log("ALT LOGIN: Could not fetch information...");
+    // Encode the "incorrect" Steam ID so that when the page is "redirected" it 
+    // still is in the input field, making it easier for the user to tweak it.
+    const steamID = encodeURIComponent(req.body.userId);
+    res.redirect(`/alt-login?id=` + steamID);
   }
 });
 

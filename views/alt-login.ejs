@@ -14,9 +14,31 @@
         <br>
         <form method="post" action="/alt-login">
             <br>
-            <input type="text" id="userId" name="userId">
+            <!-- If the user has previously entered a Steam ID and is redirected back, this logic will pre-enter it & the below -->
+            <% if (typeof steamID != "undefined") { %>
+            <input type="text" id="userId" name="userId" value="<%= steamID %>">
+            <% } %>
             <br>
             <button id="altUserLogin" type="submit"> ALT LOGIN </button>
         </form>
     </div>
+    <script>
+        // TODO: this can be further expanded upon by adding status code data to the query string and having more routes. 
+        // Simple jSuite Toast to notify user their ID is invalid in some way
+        function userAccountError() {
+            jSuites.notification({
+                name: 'Error - Invalid ID',
+                error: 1,
+                message: `Cannot find your Steam Account via that ID, please try again.`,
+                timeout: 4000,
+            });
+        }
+        // Goes through the URL and looks for the ?id= field, show the error 
+        // popup if present as it is only present when the user has failed the 
+        // try/catch when logging in via ID.
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.has('id')) {
+            userAccountError();
+        }
+    </script>
 </div>
