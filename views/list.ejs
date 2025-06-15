@@ -481,16 +481,24 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
                     </div>
                 </div>
                 <div id="${sharedGameNames[i]}Modal" class="modal">
-                    <div class="modal-content">
-                        <img src="${gameImages[i]}" alt="Image for ${sharedGameNames[i]}">
-                        <h1 class="gameTitleModal"> ${sharedGameNames[i]} </h1>
-                        <div class="tagHolder">
-                            ${tempTag}
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-body">
+                                <img src="${gameImages[i]}" alt="Image for ${sharedGameNames[i]}">
+                                <h1 class="gameTitleModal"> ${sharedGameNames[i]} </h1>
+                                <div class="modalTagHolder">
+                                    ${tempTag}
+                                </div>
+                                <div class="modalPrices">
+                                    ${tempPrice}
+                                </div>
+                                <p class="gameModalDesc"> ${descriptions[i]} </p>
+                                <a class="gameModalLink" href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
+                                <div>
+                                    <span id="back${i}" class="back"> &times; </span>
+                                </div>
+                            </div>
                         </div>
-                        ${tempPrice}
-                        <p class="gameModalDesc"> ${descriptions[i]} </p>
-                        <a class="gameModalLink" href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
-                        <span id="back${i}" class="back"> &times; </span>
                     </div>
             </div>
             `;
@@ -512,17 +520,25 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
                 </div>
             </div>
             <div id="${sharedGameNames[i]}Modal" class="modal">
+                <div class="modal-dialog">
                     <div class="modal-content">
-                        <img src="${gameImages[i]}" alt="Image for ${sharedGameNames[i]}">
-                        <h1 class="gameTitleModal"> ${sharedGameNames[i]} </h1>
-                        <div class="tagHolder">
-                            ${tempTag}
+                        <div class="modal-body">
+                            <img src="${gameImages[i]}" alt="Image for ${sharedGameNames[i]}">
+                            <h1 class="gameTitleModal"> ${sharedGameNames[i]} </h1>
+                            <div class="modalTagHolder">
+                                ${tempTag}
+                            </div>
+                            <div class="modalPrices">
+                                ${tempPrice}
+                            </div>
+                            <p class="gameModalDesc"> ${descriptions[i]} </p>
+                            <a class="gameModalLink" href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
+                            <div>
+                                <span id="back${i}" class="back"> &times; </span>
+                            </div>
                         </div>
-                        ${tempPrice}
-                        <p class="gameModalDesc"> ${descriptions[i]} </p>
-                        <a class="gameModalLink" href="${gameLinks[i]}" target="_blank"> Open on Steam </a>
-                        <span id="back${i}" class="back"> &times; </span>
                     </div>
+                </div>
             </div>
                 `;
           }

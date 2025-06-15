@@ -16,12 +16,14 @@
     margin-top: 1rem;
 }
 
-/* Ensures the multiple tags are in a row pattern */
+/* Ensures the multiple tags on each unopened game item are in a row pattern */
 .tagHolder {
     display: flex;
 }
 
-.modal-content .tagHolder {
+/* Specifically tags within the pop up modals */
+.modalTagHolder {
+    display: flex;
     justify-content: center;
 }
 
@@ -109,42 +111,45 @@
     flex: 2;
 }
 
-.modal {
+.modal-body {
+    background-color: var(--boxBackground);
+}
+
+/* TODO: turning off most of our older Modal customizations for now, will most likely delete these later once things seem stable. */
+/* .modal {
     display: none;
     position: fixed;
-    padding-top: 50%;
+    padding-top: 50%; */
     /* left: 100; */
-    width: 100%;
+    /* width: 100%;
     height: 30%;
     align-items: center;
     justify-content: center;
-}
+} */
 
-.modal-content {
+/* .modal-content {
     display: flex;
-    background-color: var(--boxBackground);
-    /* justify-content: center;
-    align-items: center; */
+    background-color: var(--boxBackground); 
     color: white;
     position: absolute;
     width: 50%;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-}
+} */
 
-#modalTopArea {
+/* #modalTopArea {
     display: flex;
-}
+} */
 
-#modalTopArea h2 {
+/* #modalTopArea h2 {
     flex: 9;
-}
+} */
 
-.back {
+/* .back {
     top: -20px;
     font-size: 40px;
-}
+} */
 
 /* All components for the RIGHT hand column */
 #rightHandList {
@@ -248,30 +253,48 @@
 }
 
 .gameTitleModal {
-    font-size: 2rem !important;
-    text-align: center;
-    padding-top: 2vh;
+    /* font-size: 2rem !important; */
+    /* text-align: center; */
+    margin-top: 2vh;
 }
 
 .gameModalDesc {
-    text-align: left;
-    font-size: 1rem;
-    padding: 0 2vw;
+    /* text-align: left; */
+    font-size: clamp(1rem, 5vw, 1.25rem);
+    /* padding: 0 2vw; */
 }
 
+/*
 .gameModalLink {
     text-align: center;
 }
 
 .modal-content {
     text-align: left;   
-}
+} */
 
 /* TODO: make Modal rise from the bottom of the screen instead of "appear" */
 /* TODO: Make modal "swipe-able" too (later goal) */
 
+/* This is the X (closing icon) on each modal */
 .back {
     text-align: center;
+    color: white;
+    font-size: 3rem;
+}
+
+/* A wrapper around the prices within modals. */
+.modalPrices {
+    display: flex;
+    justify-content: center;
+    gap: 1vw;
+}
+
+/* Turning off a bunch of styling from the normal tagHolder for w/in modals */
+.modalPrices .normalPrice, .modalPrices .fullPrice {
+    margin: 0;
+    align-self: auto;
+    font-size: clamp(1rem, 4vh, 2rem);
 }
 
 /* ===================== "Removable" Tags on List ===================== */
@@ -368,14 +391,14 @@
         margin-bottom: auto;
     }
 
-    .modal {
+    /* .modal {
         height: 100%;
         padding-top: 10%;
-    }
+    } */
 
-    .modal-content {
+    /* .modal-content {
         position: relative;
         width: 100%;
         transform: translate(-50%, -10%);
-    }
+    } */
 }
