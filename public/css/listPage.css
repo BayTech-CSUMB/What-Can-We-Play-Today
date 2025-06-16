@@ -391,14 +391,8 @@
         margin-bottom: auto;
     }
 
-    /* .modal {
+    .modal {
         height: 100%;
         padding-top: 10%;
-    } */
-
-    /* .modal-content {
-        position: relative;
-        width: 100%;
-        transform: translate(-50%, -10%);
-    } */
+    }
 }

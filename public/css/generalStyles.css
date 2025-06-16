@@ -185,11 +185,12 @@ button:hover {
         padding-top: 10%;
     }
 
-    .modal-content {
+    /* Removed b/c of default mobile modal properties, will delete later. */
+    /* .modal-content {
         position: relative;
         width: 100%;
         transform: translate(-50%, -10%);
-    }
+    } */
 
     #back {
         top: 0px;
@@ -198,5 +199,14 @@ button:hover {
 
     .jnotification-container {
         max-width: 90vw;
+    }
+
+    /* This ensures the image doesn't get too large on mobile and cause the modal to break */
+    .modal-body img {
+        max-width: 90vw;
+    }
+    /* Keeps mobile modal centered cause it some margin by default otherwise. */
+    .modal-dialog {
+        margin: 0;
     }
 }
