@@ -43,7 +43,7 @@ httpApp.all("*", (req, res) =>
 );
 const httpServer = http.createServer(httpApp);
 httpServer.listen(80, () =>
-  console.log(`HTTP Redirecter Server Up on Port 80!`)
+  console.log(`STARTUP: HTTP Redirecter Server Up on Port 80!`)
 );
 
 // TODO: Double check what CORS policy will mean for our app.
@@ -71,6 +71,10 @@ const limiter = rateLimiter({
     windowMs: 15 * 60 * 1000,
     max: 200,
 });
+
+// Variables for counting our API requests per day, resets daily.
+let steamAPICount = 0;
+let spyAPICount = 0;
 
 app.use(limiter);
 
@@ -125,6 +129,7 @@ async function fetchTags(gameID) {
   const response = await fetch(url);
   const result = await response.json();
   const tags = Object.keys(result.tags).join(",");
+  spyAPICount += 1;
   return tags;
 }
 
@@ -204,6 +209,7 @@ async function fetchGenresPrices(gameID) {
   const steamURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}&l=en`;
   const response2 = await fetch(steamURL);
   const result2 = await response2.json();
+  steamAPICount += 1;
   let initial_price = 0;
   let final_price = 0;
   let genre = ``;
@@ -255,6 +261,7 @@ async function quickGameUpdate() {
         const steamURL = `https://store.steampowered.com/api/appdetails?appids=${curGame.gameID}&l=en`;
         const response2 = await fetch(steamURL);
         const result2 = await response2.json();
+        steamAPICount += 1;
         let final_price = 0; 
 
         if (result2[`${curGame.gameID}`].success == true) {
@@ -311,6 +318,8 @@ async function checkGames(steamID) {
       gameInfo = result.data.games;
     })
     .catch(console.error);
+    // TODO: check documentation for how to change the output log of this error
+    steamAPICount += 1;
 
   // We iterate through the users' games using the data from the above function
   for (let curGame = 0; curGame < gameCount; curGame++) {
@@ -383,8 +392,8 @@ async function checkGames(steamID) {
       if (!genre.includes(`Multi-player`)) {
         is_multiplayer = 0;
       }
-
-      console.log(`Added ${gameName} - ${gameID}!`);
+      // DEBUG: confirming if games were added succesfully.
+      // console.log(`Added ${gameName} - ${gameID}!`);
       db.prepare(
         `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
@@ -450,6 +459,9 @@ app.get("/auth/steam", async (req, res) => {
 app.get("/auth/steam/authenticate", async (req, res) => {
   try {
     const user = await steam.authenticate(req);
+    steamAPICount += 1;
+
+    console.log(`LOGIN: ${user["username"]} has successfully logged in!`);
 
     // TODO: Check that this cookie storage method is best practices.
     res.cookie("steamID", user["steamid"]);
@@ -457,12 +469,11 @@ app.get("/auth/steam/authenticate", async (req, res) => {
     res.cookie("avatar", user["avatar"]["medium"]);
 
     // DEBUG: Checking who is logged in via Backend
-    console.log(`${user["username"]} has logged in!`);
+    // console.log(`${user["username"]} has logged in!`);
 
     res.render("room-choice");
   } catch (error) {
-    const tempTime = moment.toString();
-    console.error(`ERROR: Couldn't Fetch! ${error}; ${tempTime}`);
+    console.error(`LOGIN: Couldn't Fetch! ${error}`);
   }
 });
 
@@ -567,26 +578,27 @@ app.get("/empty-room", async (req, res) => {
 app.post("/alt-login", async (req, res) => {
   try {
     let steamID = req.body.userId;
-    console.log("Getting user information...");
+    // DEBUG: For confirming user has logged in.
+    // console.log("Getting user information...");
     const response = await axios.get(
       `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${config.steamKey}&steamids=${steamID}`
     );
-    //const players = response.data && response.data.response && response.data.response.players;
+    steamAPICount += 1;
     let user = response.data.response.players;
 
     let username = user[0].personaname;
     let profileImg = user[0].avatarmedium;
-    console.log(`${username} information has been fetched!`);
+    console.log(`ALT LOGIN: ${username} has logged in successfully!`);
 
     res.cookie("steamID", steamID);
     res.cookie("username", username);
     res.cookie("avatar", profileImg);
     res.redirect(303, "room-choice");
-  } catch {
+  } catch (error) {
     // TODO: a specific status code from Steam 429 shows up when we've reached 
     // our API limit from them, could display that too & other more specific 
     // messages.
-    console.log("ALT LOGIN: Could not fetch information...");
+    console.error(`ALT LOGIN: Could not fetch information on user. ${error}`);
     // Encode the "incorrect" Steam ID so that when the page is "redirected" it 
     // still is in the input field, making it easier for the user to tweak it.
     const steamID = encodeURIComponent(req.body.userId);
@@ -614,7 +626,7 @@ io.on("connection", (socket) => {
     let roomNumber = data.roomNumber;
     // Validate roomNumber to ensure it consists of exactly 5 digits
     if (!/^\d{5}$/.test(roomNumber)) {
-      console.error("Invalid room number provided:", roomNumber);
+      console.error("SOCKET: Invalid room number provided:", roomNumber);
       // Optionally, send an error response back to the client to inform them of the invalid input
       return; // Stop further execution for this message
     }
@@ -627,7 +639,7 @@ io.on("connection", (socket) => {
     // Using the variable above, we can check if there IS a room or not
     if (typeof potentialRoom != "undefined") {
       // DEBUG: Checking our Logic
-      console.log(`Found Room: ${roomNumber}`);
+      // console.log(`Found Room: ${roomNumber}`);
       let foundMembers = potentialRoom.roomMembers;
       // Quickly loop and check if the USER is ALREADY there DON'T update
       let hasFound = false;
@@ -643,7 +655,7 @@ io.on("connection", (socket) => {
       }
     } else {
       // DEBUG: Checking our Logic
-      console.log(`Room NOT Found: ${roomNumber}`);
+      // console.log(`Room NOT Found: ${roomNumber}`);
       // Made a temp array to store the first user (HOST) and add to the array keeping track of existing socket rooms.
       let temp = new Room(roomNumber, [
         [data.steamID, data.username, data.avatar],
@@ -794,6 +806,7 @@ app.get("/altTest", async (req, res) => {
       gameInfo = result.data.games;
     })
     .catch(console.error);
+    steamAPICount += 1;
 
   // We iterate through the users' games using the data from the above function
   for (let curGame = 0; curGame < gameLimit; curGame++) {
@@ -867,7 +880,7 @@ app.get("/altTest", async (req, res) => {
         is_multiplayer = 0;
       }
 
-      console.log(`Added ${gameName} - ${gameID}!`);
+    //   console.log(`Added ${gameName} - ${gameID}!`);
       db.prepare(
         `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
@@ -939,11 +952,12 @@ app.get("/logout", (req, res) => {
       deleteUserFromRoom(roomNumber, curUsersID);
     }
   } else {
-    const tempTime = moment.toString();
     console.error(
-      `ERROR: User was in a room that doesn't exist anymore? ${tempTime}`
+      `LOGOUT: User was in a room that doesn't exist.`
     );
   }
+
+  console.log(`LOGOUT: ${req.cookies.username} has successfully logged out!`);
 
   // After removing them from a room, we'll clear their cookies.
   res.clearCookie("steamID");
@@ -977,9 +991,8 @@ app.get("/leave", (req, res) => {
         deleteUserFromRoom(roomNumber, curUsersID);
       }
     } else {
-      const tempTime = moment.toString();
       console.error(
-        `ERROR: User was in a room that doesn't exist anymore? ${tempTime}`
+        `LEAVE: User tried to leave a room that doesn't exist.`
       );
     }
 
@@ -1006,7 +1019,7 @@ app.get("*", (req, res) => {
 
 // TODO: Confirm weird HTTP issues and or attempt to re-route port 80 traffic to 443
 server.listen(443, () => {
-  console.log("HTTPS server running on port 443");
+  console.log("STARTUP: HTTPS server running on port 443");
 });
 
 // Here is where we setup our daily quick updates. Currently set to 9am.
@@ -1016,4 +1029,8 @@ cron.schedule('0 9 * * *', () => {
     // const numOfGames = quickGameUpdate();
     // const date = new Date(); // add both game count & month/day to output logs
     // console.log(`Successfully updated games ${numOfGames} on ${date.getMonth()+1}-${date.getDate()}!`);
+    
+    // TODO: Finish code on resetting our API Counts & persistently store the data on our DB
+    // steamAPICount = 0;
+    // spyAPICount = 0;
 });
