@@ -92,6 +92,18 @@ app.use(express.urlencoded({ extended: true }));
 // Setup our SQLite DB for our game information.
 const db = require("better-sqlite3")(`./private/games.db`);
 
+// Test Line to catch the URIError Decode Param error
+app.use(function(req, res, next) {
+    try {
+        decodeURIComponent(req.path)
+    }
+    catch(e) {
+        console.log(`TEMP: ${req.url} ${e}`);
+        return res.redirect('/'); 
+    }
+    next(); 
+});
+
 // ================== RUNTIME VARIABLES ==================
 
 // TODO: Consolidate the two room structs (this & socketRooms) so we don't use extra memory.
