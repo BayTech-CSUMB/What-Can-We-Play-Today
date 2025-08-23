@@ -1,3 +1,8 @@
+// Load environment configuration
+const dotenv = require('dotenv');
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+dotenv.config({ path: envFile });
+
 // Critical for Express itself
 const express = require("express");
 const app = express();
@@ -37,13 +42,13 @@ if (process.env.ENVIRO=="prod") {
 const http = require("http");
 const httpApp = express();
 
-// TODO: See if this can be set to only run on a production env
+// Redirect HTTP to HTTPS based on environment configuration
 httpApp.all("*", (req, res) =>
-  res.redirect(301, "https://whatcanweplay.today")
+  res.redirect(301, process.env.REDIRECT_TARGET)
 );
 const httpServer = http.createServer(httpApp);
 httpServer.listen(80, () =>
-  console.log(`STARTUP: HTTP Redirecter Server Up on Port 80!`)
+  console.log(`STARTUP: HTTP Redirecter Server Up on Port 80!\n Site running on: http://localhost`)
 );
 
 // TODO: Double check what CORS policy will mean for our app.
@@ -1017,10 +1022,16 @@ app.get("*", (req, res) => {
 
 // ======== SERVER LINES ========
 
-// TODO: Confirm weird HTTP issues and or attempt to re-route port 80 traffic to 443
-server.listen(443, () => {
-  console.log("STARTUP: HTTPS server running on port 443");
-});
+// Start server on appropriate port based on environment
+if (process.env.ENVIRO === "prod") {
+  server.listen(443, () => {
+    console.log("STARTUP: HTTPS server running on port 443\n Secure site running on: https://localhost");
+  });
+} else {
+  server.listen(3000, () => {
+    console.log("STARTUP: HTTP server running on port 3000\n Development site running on: http://localhost:3000");
+  });
+}
 
 // Here is where we setup our daily quick updates. Currently set to 9am.
 cron.schedule('0 9 * * *', () => {
