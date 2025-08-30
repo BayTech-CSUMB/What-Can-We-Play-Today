@@ -24,7 +24,9 @@ const config = {
   sessionSecret: process.env.SESSION_SECRET,
   url: process.env.SITE_URL,
   keyPath: process.env.SSL_KEY_PATH,
-  certPath: process.env.SSL_CERT_PATH
+  certPath: process.env.SSL_CERT_PATH,
+  // Use current host for Socket.IO connections - empty string means use current domain
+  socketUrl: process.env.VERCEL ? '' : process.env.SITE_URL
 };
 
 // SSL certificate loading for local server hosting (not needed for Vercel deployment)
@@ -41,6 +43,21 @@ const config = {
 
 // Modules used to facilitate data transfer and storage
 const cookieParser = require("cookie-parser");
+const cors = require("cors");
+
+// Configure CORS for Express
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://whatcanweplay.today", 
+    "https://www.whatcanweplay.today",
+    /https:\/\/.*\.vercel\.app$/
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie"]
+}));
+
 app.use(cookieParser());
 const fetch = require("node-fetch");
 const axios = require("axios");
@@ -117,8 +134,23 @@ let server = require("http").createServer(app);
 //   console.log(`STARTUP: HTTP Redirecter Server Up on Port 80!\n Site running on: http://localhost`)
 // );
 
-// TODO: Double check what CORS policy will mean for our app.
-const io = require("socket.io")(server, { cors: { origin: "*" } });
+// Configure CORS for Socket.IO based on environment
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://whatcanweplay.today", 
+  "https://www.whatcanweplay.today",
+  "https://what-can-we-play-today-bbybts4rd-yukioriveras-projects.vercel.app",
+  "https://what-can-we-play-today-5bp1w1sxl-yukioriveras-projects.vercel.app",
+  "https://what-can-we-play-today-rfy5ggou4-yukioriveras-projects.vercel.app"
+];
+
+const io = require("socket.io")(server, { 
+  cors: { 
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
+  } 
+});
 
 // Setting up a helper Wrapper library to make the Steam API much easier to use
 const steamWrapper = require("steam-js-api");
@@ -669,7 +701,7 @@ app.post("/room-choice", async (req, res) => {
     {
       role: req.body.role,
       roomNumber: this.roomNumber,
-      url: config.url,
+      url: config.socketUrl,
     },
     303
   );
@@ -692,7 +724,7 @@ app.post("/join-room", async (req, res) => {
 
   if (existingRooms.includes(potentialRoomNum)) {
     res.cookie("roomNumber", potentialRoomNum);
-    res.render("empty-room", { roomNumber: potentialRoomNum, url: config.url });
+    res.render("empty-room", { roomNumber: potentialRoomNum, url: config.socketUrl });
   } else {
     res.render("join-room", { existingRooms: existingRooms });
   }
@@ -706,7 +738,7 @@ app.get("/list", async (req, res) => {
   } else if (req.cookies.roomNumber == null) {
     res.redirect("/room-choice");
   } else {
-    res.render("list", { url: config.url });
+    res.render("list", { url: config.socketUrl });
   }
 });
 
@@ -720,7 +752,7 @@ app.get("/empty-room", async (req, res) => {
 
     res.render("empty-room", {
       roomNumber: req.cookies.roomNumber,
-      url: config.url,
+      url: config.socketUrl,
     });
   }
 });
