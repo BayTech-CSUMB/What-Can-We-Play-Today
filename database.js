@@ -202,8 +202,11 @@ const db = {
             const { data, error } = await supabase
               .from('games')
               .select('game_id');
-            if (error) throw error;
-            return data.map(row => ({ gameID: row.game_id }));
+            if (error) {
+              console.error('Supabase query error:', error);
+              return [];
+            }
+            return (data || []).map(row => ({ gameID: row.game_id }));
           }
           
           if (query.includes('SELECT gameID FROM PendingGames')) {
@@ -213,22 +216,39 @@ const db = {
               .select('game_id')
               .order('created_at', { ascending: true })
               .limit(limit);
-            if (error) throw error;
-            return data.map(row => ({ gameID: row.game_id }));
+            if (error) {
+              console.error('Supabase query error:', error);
+              return [];
+            }
+            return (data || []).map(row => ({ gameID: row.game_id }));
           }
           
           // Handle complex game queries with joins
           if (query.includes('SELECT * FROM Games NATURAL JOIN Users')) {
             const [userID] = params;
             
-            // Extract conditions from query
+            // First get user's game IDs
+            const { data: userGames, error: userError } = await supabase
+              .from('users')
+              .select('game_id')
+              .eq('user_id', userID);
+              
+            if (userError) {
+              console.error('User games query error:', userError);
+              return [];
+            }
+            
+            if (!userGames || userGames.length === 0) {
+              return [];
+            }
+            
+            const gameIds = userGames.map(ug => ug.game_id);
+            
+            // Then get games that match the user's games
             let supabaseQuery = supabase
               .from('games')
-              .select(`
-                *,
-                users!inner(user_id)
-              `)
-              .eq('users.user_id', userID);
+              .select('*')
+              .in('game_id', gameIds);
             
             // Add multiplayer filter if present
             if (query.includes('is_multiplayer = 1')) {
@@ -257,10 +277,13 @@ const db = {
             }
             
             const { data, error } = await supabaseQuery;
-            if (error) throw error;
+            if (error) {
+              console.error('Supabase query error:', error);
+              return [];
+            }
             
             // Convert back to SQLite format
-            return data.map(row => ({
+            return (data || []).map(row => ({
               gameID: row.game_id,
               name: row.name,
               genre: row.genre,

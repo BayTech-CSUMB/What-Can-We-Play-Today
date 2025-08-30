@@ -25,8 +25,8 @@ const config = {
   url: process.env.SITE_URL,
   keyPath: process.env.SSL_KEY_PATH,
   certPath: process.env.SSL_CERT_PATH,
-  // Use current host for Socket.IO connections - empty string means use current domain
-  socketUrl: process.env.VERCEL ? '' : process.env.SITE_URL
+  // Use current host for Socket.IO connections 
+  socketUrl: process.env.VERCEL ? '' : 'http://localhost:3000'
 };
 
 // SSL certificate loading for local server hosting (not needed for Vercel deployment)
@@ -915,9 +915,12 @@ io.on("connection", (socket) => {
       const currentUserID = roomMembers[i][0];
       // Now we retrieve all the users recorded games and we'll loop those.
       // Query will only retrieve MULTI PLAYER games for the current user.
-      const currentUsersGames = db.prepare(query).all(currentUserID);
+      const currentUsersGames = await db.prepare(query).all(currentUserID);
 
-      currentUsersGames.forEach((curGame) => {
+      // Ensure we have an array to work with
+      const gamesArray = Array.isArray(currentUsersGames) ? currentUsersGames : [];
+      
+      gamesArray.forEach((curGame) => {
         // TODO: Would it be better to use a games ID here? Can a game have the same name as another?
         const indexOfGame = sharedGameNames.indexOf(curGame.name);
         if (indexOfGame != -1) {
