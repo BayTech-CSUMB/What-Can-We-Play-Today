@@ -145,13 +145,26 @@ app.use(express.static("public"));
 // Need this line to allow Express to parse values sent by POST forms
 app.use(express.urlencoded({ extended: true }));
 // Setup our SQLite DB for our game information.
-const db = require("better-sqlite3")(`./private/games.db`);
-
-// Ensure auxiliary tables exist (minimal migration)
-db.prepare(`CREATE TABLE IF NOT EXISTS PendingGames (
-  gameID TEXT PRIMARY KEY,
-  created_at TEXT
-)`).run();
+// Note: On Vercel, this will be read-only. Consider using a cloud database for production.
+let db;
+try {
+  db = require("better-sqlite3")(`./private/games.db`);
+  // Ensure auxiliary tables exist (minimal migration)
+  db.prepare(`CREATE TABLE IF NOT EXISTS PendingGames (
+    gameID TEXT PRIMARY KEY,
+    created_at TEXT
+  )`).run();
+} catch (error) {
+  console.error("Database initialization failed (expected on Vercel):", error.message);
+  // Create a mock database object to prevent crashes
+  db = {
+    prepare: () => ({
+      run: () => {},
+      get: () => null,
+      all: () => []
+    })
+  };
+}
 
 // ================== RUNTIME VARIABLES ==================
 
