@@ -155,26 +155,34 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 // Need this line to allow Express to parse values sent by POST forms
 app.use(express.urlencoded({ extended: true }));
-// Setup our SQLite DB for our game information.
-// Note: On Vercel, this will be read-only. Consider using a cloud database for production.
+// Setup our database connection (Supabase for production, SQLite for local dev)
 let db;
 try {
-  db = require("better-sqlite3")(`./private/games.db`);
-  // Ensure auxiliary tables exist (minimal migration)
-  db.prepare(`CREATE TABLE IF NOT EXISTS PendingGames (
-    gameID TEXT PRIMARY KEY,
-    created_at TEXT
-  )`).run();
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+    // Use Supabase for production/cloud deployment
+    db = require('./database');
+    console.log('Database: Using Supabase');
+  } else {
+    // Fallback to SQLite for local development
+    const sqlite = require("better-sqlite3")(`./private/games.db`);
+    sqlite.prepare(`CREATE TABLE IF NOT EXISTS PendingGames (
+      gameID TEXT PRIMARY KEY,
+      created_at TEXT
+    )`).run();
+    db = sqlite;
+    console.log('Database: Using SQLite');
+  }
 } catch (error) {
-  console.error("Database initialization failed (expected on Vercel):", error.message);
+  console.error("Database initialization failed:", error.message);
   // Create a mock database object to prevent crashes
   db = {
     prepare: () => ({
-      run: () => {},
+      run: () => ({ changes: 0 }),
       get: () => null,
       all: () => []
     })
   };
+  console.log('Database: Using mock database');
 }
 
 // ================== RUNTIME VARIABLES ==================
