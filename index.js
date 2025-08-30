@@ -8,18 +8,25 @@ const express = require("express");
 const app = express();
 
 // Ensure API Keys and Confidential Data don't get published to Github
-const config = require("./private/keys.json");
+const config = {
+  steamKey: process.env.STEAM_KEY,
+  sessionSecret: process.env.SESSION_SECRET,
+  url: process.env.SITE_URL,
+  keyPath: process.env.SSL_KEY_PATH,
+  certPath: process.env.SSL_CERT_PATH
+};
 
-// Ensures prod environment has access to files for HTTPS certification
-let fs;
-let options;
-if (process.env.ENVIRO == "prod") {
-    fs = require("fs");
-    options = {
-      key: fs.readFileSync(config.keyPath),
-      cert: fs.readFileSync(config.certPath)
-    };
-}
+// SSL certificate loading for local server hosting (not needed for Vercel deployment)
+// Vercel automatically handles SSL certificates, but keep this code for local hosting
+// let fs;
+// let options;
+// if (process.env.ENVIRO == "prod") {
+//     fs = require("fs");
+//     options = {
+//       key: fs.readFileSync(config.keyPath),
+//       cert: fs.readFileSync(config.certPath)
+//     };
+// }
 
 // Modules used to facilitate data transfer and storage
 const cookieParser = require("cookie-parser");
@@ -30,26 +37,74 @@ const moment = require("moment");
 // Library for scheduling daily quick updates & periodic deep updates
 const cron = require('node-cron');
 
-let server;
-if (process.env.ENVIRO=="prod") {
-    server = require("https").createServer(options, app);
-} else { // dev
-    server = require("http").createServer(app);
+// ================== API RATE LIMITING & RETRIES ==================
+// Centralized rate limiting wrapper for external API calls to reduce 429s.
+const RATE_LIMITS = {
+  steamStore: { minDelay: 400 }, // ~2.5 req/sec
+  steamSpy: { minDelay: 65000 }, // 1+ minute per request
+};
+
+const _rlState = {
+  steamStore: { last: 0, chain: Promise.resolve() },
+  steamSpy: { last: 0, chain: Promise.resolve() },
+};
+
+function _delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function _fetchWithBackoff(url, options, attempt = 0) {
+  const res = await fetch(url, options);
+  if (res.status === 429 || res.status >= 500) {
+    if (attempt >= 5) return res; // give up after a few tries
+    let wait = 1000 * Math.pow(2, attempt);
+    const retryAfter = res.headers.get('Retry-After');
+    if (retryAfter) {
+      const secs = parseInt(retryAfter, 10);
+      if (!isNaN(secs)) wait = Math.max(wait, secs * 1000);
+    }
+    await _delay(wait);
+    return _fetchWithBackoff(url, options, attempt + 1);
+  }
+  return res;
 }
 
-// This creates another HTTP server; ensure the above is commented out as the
-// extra servers running are only needed to redirect traffic to HTTPS.
-const http = require("http");
-const httpApp = express();
+function rateLimitedFetch(url, group = 'steamStore', options) {
+  const state = _rlState[group];
+  const minDelay = RATE_LIMITS[group].minDelay;
+  state.chain = state.chain.then(async () => {
+    const now = Date.now();
+    const wait = Math.max(0, state.last + minDelay - now);
+    if (wait) await _delay(wait);
+    try {
+      return await _fetchWithBackoff(url, options);
+    } finally {
+      state.last = Date.now();
+    }
+  });
+  return state.chain;
+}
 
-// Redirect HTTP to HTTPS based on environment configuration
-httpApp.all("*", (req, res) =>
-  res.redirect(301, process.env.REDIRECT_TARGET)
-);
-const httpServer = http.createServer(httpApp);
-httpServer.listen(80, () =>
-  console.log(`STARTUP: HTTP Redirecter Server Up on Port 80!\n Site running on: http://localhost`)
-);
+// Server creation - use HTTP for both dev and production (Vercel handles HTTPS)
+let server = require("http").createServer(app);
+// For local SSL hosting, uncomment below and comment above:
+// let server;
+// if (process.env.ENVIRO=="prod") {
+//     server = require("https").createServer(options, app);
+// } else { // dev
+//     server = require("http").createServer(app);
+// }
+
+// HTTP to HTTPS redirect server (only needed for local hosting, not Vercel)
+// Vercel handles domain redirects automatically when you add a custom domain
+// const http = require("http");
+// const httpApp = express();
+// 
+// httpApp.all("*", (req, res) =>
+//   res.redirect(301, process.env.REDIRECT_TARGET)
+// );
+// const httpServer = http.createServer(httpApp);
+// httpServer.listen(80, () =>
+//   console.log(`STARTUP: HTTP Redirecter Server Up on Port 80!\n Site running on: http://localhost`)
+// );
 
 // TODO: Double check what CORS policy will mean for our app.
 const io = require("socket.io")(server, { cors: { origin: "*" } });
@@ -92,17 +147,11 @@ app.use(express.urlencoded({ extended: true }));
 // Setup our SQLite DB for our game information.
 const db = require("better-sqlite3")(`./private/games.db`);
 
-// Test Line to catch the URIError Decode Param error
-app.use(function(req, res, next) {
-    try {
-        decodeURIComponent(req.path)
-    }
-    catch(e) {
-        console.log(`TEMP: ${req.url} ${e}`);
-        return res.redirect('/'); 
-    }
-    next(); 
-});
+// Ensure auxiliary tables exist (minimal migration)
+db.prepare(`CREATE TABLE IF NOT EXISTS PendingGames (
+  gameID TEXT PRIMARY KEY,
+  created_at TEXT
+)`).run();
 
 // ================== RUNTIME VARIABLES ==================
 
@@ -143,7 +192,8 @@ existingRooms.push(`11111`);
 // Fetches details of game using its id
 async function fetchTags(gameID) {
   const url = `https://steamspy.com/api.php?request=appdetails&appid=${gameID}`;
-  const response = await fetch(url);
+  // NOTE: SteamSpy is extremely rate limited. We keep the call but throttle hard.
+  const response = await rateLimitedFetch(url, 'steamSpy');
   const result = await response.json();
   const tags = Object.keys(result.tags).join(",");
   spyAPICount += 1;
@@ -224,7 +274,7 @@ function computeDateDiff(dateToCompare) {
 async function fetchGenresPrices(gameID) {
   // Then Steam's API for majority of the data. From this we want the "categories" and pricing of each game.
   const steamURL = `https://store.steampowered.com/api/appdetails?appids=${gameID}&l=en`;
-  const response2 = await fetch(steamURL);
+  const response2 = await rateLimitedFetch(steamURL, 'steamStore');
   const result2 = await response2.json();
   steamAPICount += 1;
   let initial_price = 0;
@@ -276,7 +326,7 @@ async function quickGameUpdate() {
     // Use Promise.all to wait for all async operations
     await Promise.all(localGame.map(async (curGame) => {
         const steamURL = `https://store.steampowered.com/api/appdetails?appids=${curGame.gameID}&l=en`;
-        const response2 = await fetch(steamURL);
+        const response2 = await rateLimitedFetch(steamURL, 'steamStore');
         const result2 = await response2.json();
         steamAPICount += 1;
         let final_price = 0; 
@@ -321,6 +371,45 @@ async function deepGameUpdate() {
               `UPDATE Games SET name = ?, genre = ?, price = ?, initial_price = ?, header_image = ?, description = ? WHERE gameID = ?`
             ).run(curGame[1], curGame[2], curGame[4], curGame[3], curGame[6], curGame[5], curGame[0]);
     });
+}
+
+// Process a queue of pending games to enrich details without hammering APIs
+async function processPendingGames(limit = 30) {
+  const pending = db.prepare("SELECT gameID FROM PendingGames ORDER BY created_at LIMIT ?").all(limit);
+  if (!pending.length) return 0;
+
+  for (const row of pending) {
+    const gameID = row.gameID;
+    try {
+      const [genre, initial_price, final_price, shortDesc, gameName, headerImg] = await fetchGenresPrices(gameID);
+      const is_multiplayer = genre && genre.includes('Multi-player') ? 1 : 0;
+      const age = generateDate();
+      const tags = ''; // Avoid SteamSpy to respect rate limits
+      const storeUrl = `https://store.steampowered.com/app/${gameID}/`;
+
+      db.prepare(
+        `INSERT OR REPLACE INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+      ).run(
+        `${gameID}`,
+        gameName || '',
+        genre || '',
+        tags,
+        age,
+        final_price || 0,
+        initial_price || 0,
+        `${is_multiplayer}`,
+        headerImg || '',
+        storeUrl,
+        shortDesc || ''
+      );
+
+      db.prepare("DELETE FROM PendingGames WHERE gameID = ?").run(`${gameID}`);
+    } catch (e) {
+      console.error(`PENDING: Failed to process game ${gameID}:`, e.message || e);
+      // Leave it in queue; it can retry on next run
+    }
+  }
+  return pending.length;
 }
 
 // Checks our database to see if we've got the game and then checks if the user is associated with said game
@@ -394,39 +483,52 @@ async function checkGames(steamID) {
         );
       }
     } else {
-      // Case if the game is not located in the database
-      // We query game and add it to the Games table along with the users personal table
-      tags = await fetchTags(gameID);
-      let temp = await fetchGenresPrices(gameID);
-      genre = temp[0];
-      initial_price = temp[1];
-      final_price = temp[2];
-      let is_multiplayer = 1;
-      let age = generateDate();
-      short_description = temp[3];
-
-      // If its single player
-      if (!genre.includes(`Multi-player`)) {
-        is_multiplayer = 0;
+      // Game not in DB: throttle synchronous enrichment and queue the rest
+      if (typeof globalThis.__processedNewGames === 'undefined') {
+        globalThis.__processedNewGames = 0;
       }
-      // DEBUG: confirming if games were added succesfully.
-      // console.log(`Added ${gameName} - ${gameID}!`);
-      db.prepare(
-        `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
-      ).run(
-        `${gameID}`,
-        gameName,
-        genre,
-        tags,
-        age,
-        final_price,
-        initial_price,
-        `${is_multiplayer}`,
-        gamePic,
-        gameURL,
-        short_description
-      );
+      const MAX_SYNC_NEW_GAMES = parseInt(process.env.MAX_SYNC_NEW_GAMES || '20');
 
+      if (globalThis.__processedNewGames < MAX_SYNC_NEW_GAMES) {
+        try {
+          // Enrich limited number of games synchronously (no SteamSpy tags)
+          const temp = await fetchGenresPrices(gameID);
+          genre = temp[0];
+          initial_price = temp[1];
+          final_price = temp[2];
+          short_description = temp[3];
+          let is_multiplayer = genre && genre.includes(`Multi-player`) ? 1 : 0;
+          let age = generateDate();
+
+          db.prepare(
+            `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+          ).run(
+            `${gameID}`,
+            gameName,
+            genre || '',
+            '', // omit SteamSpy tags to avoid limits
+            age,
+            final_price || 0,
+            initial_price || 0,
+            `${is_multiplayer}`,
+            gamePic,
+            gameURL,
+            short_description || ''
+          );
+          globalThis.__processedNewGames++;
+        } catch (e) {
+          console.error(`CHECKGAMES: Failed to fetch details for ${gameID}:`, e.message || e);
+          // Fallback: queue for later processing
+          db.prepare(`INSERT OR IGNORE INTO PendingGames (gameID, created_at) VALUES (?, ?)`)
+            .run(`${gameID}`, generateDate());
+        }
+      } else {
+        // Queue remaining games for background processing
+        db.prepare(`INSERT OR IGNORE INTO PendingGames (gameID, created_at) VALUES (?, ?)`)
+          .run(`${gameID}`, generateDate());
+      }
+
+      // Always associate user to game (join will work once Games row is ready)
       db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
         steamID,
         `${gameID}`
@@ -1056,4 +1158,17 @@ cron.schedule('0 9 * * *', () => {
     // TODO: Finish code on resetting our API Counts & persistently store the data on our DB
     // steamAPICount = 0;
     // spyAPICount = 0;
+});
+
+// Background job to process queued games in small, safe batches
+cron.schedule('*/10 * * * *', async () => {
+  try {
+    const batchLimit = parseInt(process.env.PENDING_BATCH_LIMIT || '50');
+    const processed = await processPendingGames(batchLimit);
+    if (processed > 0) {
+      console.log(`PENDING: processed ${processed} queued game(s).`);
+    }
+  } catch (e) {
+    console.error('PENDING: batch processing error', e.message || e);
+  }
 });
