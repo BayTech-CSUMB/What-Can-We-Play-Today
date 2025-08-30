@@ -1,11 +1,22 @@
-// Load environment configuration
-const dotenv = require('dotenv');
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
-dotenv.config({ path: envFile });
+// Load environment configuration (only for local development)
+if (!process.env.VERCEL) {
+  const dotenv = require('dotenv');
+  const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+  dotenv.config({ path: envFile });
+}
 
 // Critical for Express itself
 const express = require("express");
 const app = express();
+
+// Add error handling for initialization
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Ensure API Keys and Confidential Data don't get published to Github
 const config = {
