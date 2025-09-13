@@ -1203,18 +1203,23 @@ app.get("*", (req, res) => {
 
 // ======== SERVER LINES ========
 
-// Start server on appropriate port based on environment
-if (process.env.ENVIRO === "prod") {
-  server.listen(443, () => {
-    console.log("STARTUP: HTTPS server running on port 443\n Secure site running on: https://localhost");
-  });
-} else {
-  server.listen(3000, () => {
-    console.log("STARTUP: HTTP server running on port 3000\n Development site running on: http://localhost:3000");
-  });
+// In Vercel's serverless environment, do NOT start a listener.
+// Only start a local listener when not running on Vercel.
+if (!process.env.VERCEL) {
+  if (process.env.ENVIRO === "prod") {
+    server.listen(443, () => {
+      console.log("STARTUP: HTTPS server running on port 443\n Secure site running on: https://localhost");
+    });
+  } else {
+    server.listen(3000, () => {
+      console.log("STARTUP: HTTP server running on port 3000\n Development site running on: http://localhost:3000");
+    });
+  }
 }
 
 // Here is where we setup our daily quick updates. Currently set to 9am.
+// Avoid scheduling background jobs on Vercel since instances are ephemeral
+if (!process.env.VERCEL) {
 cron.schedule('0 9 * * *', () => {
     // get the number of games updated in total from our quickUpdate function
     // TODO: this was throwing 429 Errors? Could add some error checking incase this is sending to many requests.
@@ -1239,3 +1244,7 @@ cron.schedule('*/10 * * * *', async () => {
     console.error('PENDING: batch processing error', e.message || e);
   }
 });
+}
+
+// Export the Express app for Vercel's serverless function handler
+module.exports = app;
