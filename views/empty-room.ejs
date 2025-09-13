@@ -11,7 +11,7 @@
     <div class="background-box" style="margin-top: 3vh;">
         <h4 style="text-decoration: underline; color: #b1b1b1;"> MEMBERS </h4>
 
-        <body onload = "sendMessage()">
+        <!-- body tag comes from header.ejs; call sendMessage on DOM ready -->
             <div id="toGen"></div>
             <br>
             <!-- TODO: Ensure the "Host" of the room (the first user) can only click Generate -->
@@ -25,9 +25,18 @@
     </div>
 </div>
 <script>
+    // If we were just on the list page and somehow navigated here, bounce back
+    try {
+        if (sessionStorage.getItem('stayOnList') === '1') {
+            window.location.replace('/list');
+        }
+    } catch (_) {}
     // Sets up our Socket connections
     const socket = io('<%= url %>');
-    socket.on('connection');
+    console.log('[EMPTY] Socket connecting...');
+    socket.on('connect', () => {
+        console.log('[EMPTY] Socket connected', { id: socket.id });
+    });
 
     // Initializes sessions for filtering
     sessionStorage.setItem('tagSelection', '');
@@ -37,15 +46,22 @@
     sessionStorage.setItem('maxPriceSelection', '');
     // Fetches data from Cookies and send it to the back-end. Runs on page load.
     const sendMessage = () => {
+        console.log('[EMPTY] sendMessage');
         let steamID = Cookies.get('steamID');
         let username = Cookies.get('username');
         let avatar = Cookies.get('avatar');
         let roomNumber = Cookies.get('roomNumber');
-        socket.emit('message', {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber});
+        const payload = {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber};
+        console.log('[EMPTY] emit message', payload);
+        socket.emit('message', payload);
     }
+    window.addEventListener('DOMContentLoaded', () => {
+        sendMessage();
+    });
      
     // Receives data from Back-end when other users join.
     socket.on('otherMsg', (data) => {
+        console.log('[EMPTY] otherMsg received', { members: Array.isArray(data) ? data.length : 0 });
         let userImages = [];
         // Sets up the image div with the first user that joins
         let divAppend = document.getElementById('toGen');
@@ -68,12 +84,14 @@
     // Button used to dynamically reload page for all members
     let button = document.getElementById('newList');
     button.addEventListener('click', function() {
+        console.log('[EMPTY] Generate List clicked');
         let steamID = Cookies.get('steamID');
         let username = Cookies.get('username');
         let avatar = Cookies.get('avatar');
         let roomNumber = Cookies.get('roomNumber');
-        socket.emit('generateList', {roomNumber: roomNumber});
-        socket.emit('newList', {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber});
+        const payload = {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber};
+        console.log('[EMPTY] emit newList', payload);
+        socket.emit('newList', payload);
     });
 
     // Leave functionality to clear all user data
@@ -87,11 +105,13 @@
 
     // Dynamically updates the page when a user leaves
     socket.on('refreshList2', () =>  {
+        console.log('[EMPTY] refreshList2 received -> reloading');
         location.reload();
     });
     
     // redirects to list page
     socket.on('navigate', function() {
+        console.log('[EMPTY] navigate received -> /list');
         window.location.href = "/list";
     });
 

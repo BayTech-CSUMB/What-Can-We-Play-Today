@@ -1,9 +1,9 @@
 <%- include('partials/header.ejs', {title: `What Can We Play Today?`,
 stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
 
-<body onload="sendMessage()">
+<!-- body tag comes from header.ejs -->
   <div id="animationContainer">
-    <img id="loading" src="/img/listLoad.gif" />
+    <img id="loading" src="/img/listLoad.GIF" />
   </div>
   <div id="listPageLayout">
     <div id="leftHandList">
@@ -60,24 +60,21 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       <button id="leave">LEAVE ROOM</button>
     </div>
   </div>
-</body>
-
 <script>
   // Used for loading animation
   document.getElementById("listPageLayout").style.display = "none";
+  let listReady = false;
 
   // Setup for socket connection
-// TODO: see if there's an alternate way to throw this URL into a function of sorts.
   const socket = io("<%= url %>");
-  socket.on("connection");
-
-  // Used for dynamic reload of page
-  socket.on("refreshList", () => {
-    location.reload();
+  console.log('[LIST] Socket connecting...');
+  socket.on('connect', () => {
+    console.log('[LIST] Socket connected', { id: socket.id });
   });
 
   let leave = document.getElementById("leave");
   leave.addEventListener("click", function () {
+    console.log('[LIST] Leave clicked');
     let roomNumber = Cookies.get("roomNumber");
     sessionStorage.clear();
     socket.emit("generateList", { roomNumber: roomNumber });
@@ -113,6 +110,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
   // TODO: does everything need to be in sendMessage?
   // Connection used for sockets
   const sendMessage = () => {
+    console.log('[LIST] sendMessage start');
     // Initializes data of user from cookies
     let steamID = Cookies.get("steamID");
     let username = Cookies.get("username");
@@ -146,7 +144,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
     }
 
     // Triggers the generation of lists on
-    socket.emit("generate", {
+    const payload = {
       steamID: steamID,
       username: username,
       avatar: avatar,
@@ -156,10 +154,24 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       priceSelection: sessionStorage.getItem("priceSelection"),
       minPriceSelection: sessionStorage.getItem("minPriceSelection"),
       maxPriceSelection: sessionStorage.getItem("maxPriceSelection"),
-    });
+    };
+    console.log('[LIST] emit generate', payload);
+    socket.emit("generate", payload);
 
     // Receives data then displays a list of games
+    socket.off("finalList");
     socket.on("finalList", (data) => {
+      console.log('[LIST] finalList received', {
+        games: data && data.games ? data.games.length : 0,
+        owners: data && data.owners ? data.owners.length : 0
+      });
+      // Mark that we intend to stay on /list; used as a guard in empty-room
+      try { sessionStorage.setItem('stayOnList', '1'); document.cookie = 'stayOnList=1; path=/'; } catch (_) {}
+      // Lock URL to /list so any soft reloads don't bounce history
+      if (window.location.pathname !== '/list') {
+        history.replaceState(null, '', '/list');
+      }
+      listReady = true;
       // Initializes data used for the list
       const roomMembers = data.roomMembers;
       const sharedGameNames = data.games;
@@ -562,7 +574,36 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
         }
       }
     });
+
+    // After initial wiring, now attach a safe refresh handler
+    socket.on("refreshList", () => {
+      console.log('[LIST] refreshList received');
+      // Rather than reloading the page (which can bounce history), just re-generate
+      if (listReady) {
+        console.log('[LIST] re-emit generate due to refreshList');
+        socket.emit("generate", {
+          steamID: Cookies.get("steamID"),
+          username: Cookies.get("username"),
+          avatar: Cookies.get("avatar"),
+          roomNumber: Cookies.get("roomNumber"),
+          tagSelection: sessionStorage.getItem("tagSelection"),
+          categorySelection: sessionStorage.getItem("categorySelection"),
+          priceSelection: sessionStorage.getItem("priceSelection"),
+          minPriceSelection: sessionStorage.getItem("minPriceSelection"),
+          maxPriceSelection: sessionStorage.getItem("maxPriceSelection"),
+        });
+      }
+    });
   };
+  // Call after DOM is ready instead of using an onload attribute
+  window.addEventListener('DOMContentLoaded', () => {
+    console.log('[LIST] DOMContentLoaded');
+    if (window.location.pathname !== '/list') {
+      history.replaceState(null, '', '/list');
+    }
+    console.log('[LIST] calling sendMessage');
+    sendMessage();
+  });
 
   function copyFunction() {
     let copyRoomNum = document.getElementById("displayRoomNum");

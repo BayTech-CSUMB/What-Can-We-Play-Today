@@ -1,10 +1,17 @@
 // Database utility module for Supabase
 const { createClient } = require('@supabase/supabase-js');
 
+// Enforce Supabase requirements in production/Vercel environment
+if (process.env.VERCEL && (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY)) {
+  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY are required for Vercel deployment');
+}
+
 // Initialize Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  // Prefer service role key on the server to bypass RLS for inserts/updates
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
 // Database helper functions

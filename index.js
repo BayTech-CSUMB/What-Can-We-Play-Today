@@ -2,12 +2,58 @@
 if (!process.env.VERCEL) {
   const dotenv = require('dotenv');
   const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
-  dotenv.config({ path: envFile });
+  // Ensure local env file overrides any shell variables to avoid prod bleed-through
+  dotenv.config({ path: envFile, override: true });
 }
 
 // Critical for Express itself
 const express = require("express");
 const app = express();
+// Trust proxy headers (Vercel/Proxies) so protocol/host are detected correctly
+app.set('trust proxy', 1);
+
+// Helper function to get base URL from request (handles www/apex/preview domains)
+function getBaseUrl(req) {
+  const protocol = (req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
+  const host = (req.headers['x-forwarded-host'] || req.headers.host).split(',')[0].trim();
+  return `${protocol}://${host}`;
+}
+
+function withTrailingSlash(url) {
+  return url.endsWith('/') ? url : `${url}/`;
+}
+
+// Canonical host/protocol enforcement (helps avoid OpenID host mismatches)
+app.use((req, res, next) => {
+  try {
+    const enforce = (process.env.ENFORCE_CANONICAL || (process.env.VERCEL ? 'true' : 'false')).toLowerCase();
+    if (enforce !== 'true') return next();
+
+    // Do NOT redirect the OpenID callback path to avoid breaking verification
+    if (req.path.startsWith('/auth/steam/authenticate')) return next();
+
+    // Never enforce on localhost or 127.0.0.1 during development
+    const hostHeaderRaw = req.headers['x-forwarded-host'] || req.headers.host || '';
+    const hostHeader = hostHeaderRaw.split(',')[0].trim();
+    if (/^(localhost|127\.0\.0\.1)(:\\d+)?$/.test(hostHeader)) return next();
+
+    const canonicalUrl = process.env.SITE_URL;
+    if (!canonicalUrl) return next();
+
+    const currentBase = getBaseUrl(req);
+    const cur = new URL(withTrailingSlash(currentBase));
+    const can = new URL(withTrailingSlash(canonicalUrl));
+
+    if (cur.host !== can.host || cur.protocol !== can.protocol) {
+      const target = can.origin + req.originalUrl;
+      return res.redirect(301, target);
+    }
+    return next();
+  } catch (e) {
+    // On any parsing error, skip enforcement
+    return next();
+  }
+});
 
 // Add error handling for initialization
 process.on('uncaughtException', (error) => {
@@ -161,12 +207,7 @@ const SteamAuth = require("node-steam-openid");
 const { type } = require("os");
 const { diff } = require("semver");
 
-// Setup for Steam Oauth
-const steam = new SteamAuth({
-  realm: config.url,
-  returnUrl: config.url + "/auth/steam/authenticate",
-  apiKey: config.steamKey,
-});
+// Steam OAuth will be instantiated dynamically per request to handle different hosts
 
 // Utilizing a rate limiter to ensure we don't get DOS'ed
 const rateLimiter = require('express-rate-limit')
@@ -384,7 +425,7 @@ async function fetchGenresPrices(gameID) {
 
 async function quickGameUpdate() {
     const localDB = db.prepare("SELECT gameID FROM Games");
-    const localGame = localDB.all();
+    const localGame = await localDB.all();
     let tempGameData = [];
 
     // Use Promise.all to wait for all async operations
@@ -406,18 +447,18 @@ async function quickGameUpdate() {
         tempGameData.push([curGame.gameID, final_price]);
     }));
     // Now we have an array with update gameIDs and prices, run through and update our DB with that information.
-    tempGameData.forEach((curGame) => {
-        db.prepare(
+    for (const curGame of tempGameData) {
+        await db.prepare(
               `UPDATE Games SET price = ? WHERE gameID = ?`
             ).run(curGame[1], curGame[0]);
-    });
+    }
     
     return tempGameData.length;
 }
 
 async function deepGameUpdate() {
     const localDB = db.prepare("SELECT gameID FROM Games");
-    const localGame = localDB.all();
+    const localGame = await localDB.all();
     let tempGameData = [];
 
     // NOTE: we are purposely omitting querying the SteamSpy API for additional tags due to the limiting factor of 1 query per minute. 
@@ -430,16 +471,16 @@ async function deepGameUpdate() {
         tempGameData.push([curGame.gameID, temp[4], temp[0], temp[1], temp[2], temp[3], temp[5]]);
     }));
     // Now we have an array with update gameIDs and prices, run through and update our DB with that information.
-    tempGameData.forEach((curGame) => {
-        db.prepare(
+    for (const curGame of tempGameData) {
+        await db.prepare(
               `UPDATE Games SET name = ?, genre = ?, price = ?, initial_price = ?, header_image = ?, description = ? WHERE gameID = ?`
             ).run(curGame[1], curGame[2], curGame[4], curGame[3], curGame[6], curGame[5], curGame[0]);
-    });
+    }
 }
 
 // Process a queue of pending games to enrich details without hammering APIs
 async function processPendingGames(limit = 30) {
-  const pending = db.prepare("SELECT gameID FROM PendingGames ORDER BY created_at LIMIT ?").all(limit);
+  const pending = await db.prepare("SELECT gameID FROM PendingGames ORDER BY created_at LIMIT ?").all(limit);
   if (!pending.length) return 0;
 
   for (const row of pending) {
@@ -451,7 +492,7 @@ async function processPendingGames(limit = 30) {
       const tags = ''; // Avoid SteamSpy to respect rate limits
       const storeUrl = `https://store.steampowered.com/app/${gameID}/`;
 
-      db.prepare(
+      await db.prepare(
         `INSERT OR REPLACE INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
         `${gameID}`,
@@ -467,7 +508,7 @@ async function processPendingGames(limit = 30) {
         shortDesc || ''
       );
 
-      db.prepare("DELETE FROM PendingGames WHERE gameID = ?").run(`${gameID}`);
+      await db.prepare("DELETE FROM PendingGames WHERE gameID = ?").run(`${gameID}`);
     } catch (e) {
       console.error(`PENDING: Failed to process game ${gameID}:`, e.message || e);
       // Leave it in queue; it can retry on next run
@@ -508,12 +549,12 @@ async function checkGames(steamID) {
     // TODO: Add Short Description to our games so we can provide extended details on a game.
 
     // FIRST we query our database to see if we HAVE the game or not
-    const localGame = db
+    const localGame = await db
       .prepare("SELECT * FROM Games WHERE gameID = ?")
       .get(`${gameID}`);
 
     // Then check if the user has the local game registered in the database
-    const userPotentialGame = db
+    const userPotentialGame = await db
       .prepare("SELECT * FROM Users WHERE userID = ? AND gameID = ?")
       .get([`${steamID}`, `${gameID}`]);
 
@@ -535,13 +576,13 @@ async function checkGames(steamID) {
         // console.log(`${final_price} ${initial_price} ${tempAge} ${localGame.gameID}`);
 
         // TODO: Could a single player game become a multiplayer one in the future?
-        db.prepare(
+        await db.prepare(
           `UPDATE Games SET price = ?, initial_price = ?, age = ? WHERE gameID = ?`
         ).run(final_price, initial_price, tempAge, localGame.gameID);
       }
       // If they don't have the game in their table we add it to their database else do nothing
       if (!userPotentialGame) {
-        db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?, ?)`).run(
+        await db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?, ?)`).run(
           steamID,
           `${gameID}`
         );
@@ -564,7 +605,7 @@ async function checkGames(steamID) {
           let is_multiplayer = genre && genre.includes(`Multi-player`) ? 1 : 0;
           let age = generateDate();
 
-          db.prepare(
+          await db.prepare(
             `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
           ).run(
             `${gameID}`,
@@ -583,17 +624,17 @@ async function checkGames(steamID) {
         } catch (e) {
           console.error(`CHECKGAMES: Failed to fetch details for ${gameID}:`, e.message || e);
           // Fallback: queue for later processing
-          db.prepare(`INSERT OR IGNORE INTO PendingGames (gameID, created_at) VALUES (?, ?)`)
+          await db.prepare(`INSERT OR IGNORE INTO PendingGames (gameID, created_at) VALUES (?, ?)`)
             .run(`${gameID}`, generateDate());
         }
       } else {
         // Queue remaining games for background processing
-        db.prepare(`INSERT OR IGNORE INTO PendingGames (gameID, created_at) VALUES (?, ?)`)
+        await db.prepare(`INSERT OR IGNORE INTO PendingGames (gameID, created_at) VALUES (?, ?)`)
           .run(`${gameID}`, generateDate());
       }
 
       // Always associate user to game (join will work once Games row is ready)
-      db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
+      await db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
         steamID,
         `${gameID}`
       );
@@ -622,8 +663,39 @@ function maintainTags(inputTags, existingTags) {
 
 // ================== ROUTES ==================
 
+// Health check route for Vercel function verification
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+// Cron endpoint to process pending games (replaces node-cron in serverless)
+app.post("/api/cron/process-pending", async (req, res) => {
+  try {
+    const batchLimit = parseInt(process.env.PENDING_BATCH_LIMIT || '50');
+    const processed = await processPendingGames(batchLimit);
+    
+    console.log(`CRON API: processed ${processed} queued game(s).`);
+    res.json({ 
+      success: true, 
+      processed,
+      timestamp: new Date().toISOString() 
+    });
+  } catch (error) {
+    console.error('CRON API: batch processing error', error.message || error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // corresponds to page.com
 app.get("/", (req, res) => {
+  console.log('ROUTE / index', {
+    host: req.headers['host'],
+    referer: req.headers['referer'] || null
+  });
   res.render("index");
 });
 
@@ -634,13 +706,34 @@ app.get("/privacy-policy", (req, res) => {
 
 // Redirects user to steam login page
 app.get("/auth/steam", async (req, res) => {
-  const redirectUrl = await steam.getRedirectUrl();
-  return res.redirect(redirectUrl);
+  try {
+    const base = getBaseUrl(req);
+    const steam = new SteamAuth({
+      realm: withTrailingSlash(base),
+      returnUrl: `${base}/auth/steam/authenticate`,
+      apiKey: config.steamKey,
+    });
+    const redirectUrl = await steam.getRedirectUrl();
+    return res.redirect(redirectUrl);
+  } catch (e) {
+    console.error('LOGIN: Failed to get Steam redirect URL', {
+      error: e && e.message ? e.message : String(e),
+      host: req.headers['x-forwarded-host'] || req.headers.host,
+      protocol: req.headers['x-forwarded-proto'] || req.protocol
+    });
+    res.status(500).send('Unable to start Steam login.');
+  }
 });
 
 // Gets user information and renders the rooms page
 app.get("/auth/steam/authenticate", async (req, res) => {
   try {
+    const base = getBaseUrl(req);
+    const steam = new SteamAuth({
+      realm: withTrailingSlash(base),
+      returnUrl: `${base}/auth/steam/authenticate`,
+      apiKey: config.steamKey,
+    });
     const user = await steam.authenticate(req);
     steamAPICount += 1;
 
@@ -656,7 +749,16 @@ app.get("/auth/steam/authenticate", async (req, res) => {
 
     res.render("room-choice");
   } catch (error) {
-    console.error(`LOGIN: Couldn't Fetch! ${error}`);
+    // Common cause: return_to domain mismatch (www vs apex) or incorrect SITE_URL
+    console.error('LOGIN: Steam OpenID verification failed', {
+      error: error && error.message ? error.message : String(error),
+      host: req.headers['x-forwarded-host'] || req.headers.host,
+      protocol: req.headers['x-forwarded-proto'] || req.protocol,
+      url: req.originalUrl,
+      expectedReturnUrl: `${getBaseUrl(req)}/auth/steam/authenticate`,
+      openid_return_to: req.query && req.query['openid.return_to']
+    });
+    res.status(400).send('Steam login failed. Please try again. If this persists, ensure SITE_URL matches the primary domain (including www).');
   }
 });
 
@@ -732,6 +834,11 @@ app.post("/join-room", async (req, res) => {
 
 // Renders list page
 app.get("/list", async (req, res) => {
+  console.log('ROUTE /list', {
+    cookies: Object.keys(req.cookies || {}),
+    stayOnList: req.cookies && req.cookies.stayOnList,
+    referer: req.headers['referer'] || null
+  });
   // two guard clauses here to redirect users who shouldn't be in list w/out a steam ID & room number.
   if (req.cookies.roomNumber == null && req.cookies.steamID == null) {
     res.redirect("/");
@@ -744,6 +851,16 @@ app.get("/list", async (req, res) => {
 
 // Renders the room with its users
 app.get("/empty-room", async (req, res) => {
+  console.log('ROUTE /empty-room', {
+    cookies: Object.keys(req.cookies || {}),
+    stayOnList: req.cookies && req.cookies.stayOnList,
+    referer: req.headers['referer'] || null
+  });
+  // If user has indicated they should remain on /list (client cookie), honor it
+  if (req.cookies && req.cookies.stayOnList === '1') {
+    console.log('ROUTE /empty-room -> redirect /list due to stayOnList');
+    return res.redirect('/list');
+  }
   if (req.cookies.steamID == null) {
     res.redirect("/");
   } else {
@@ -793,18 +910,21 @@ app.post("/alt-login", async (req, res) => {
 io.on("connection", (socket) => {
   // Used to refresh the list when a user joins/leaves a room
   socket.on("generateList", (data) => {
+    console.log('SOCKET generateList', { roomNumber: data && data.roomNumber });
     socket.join("room-" + data.roomNumber);
     io.sockets.in("room-" + data.roomNumber).emit("refreshList");
   });
 
   // Used to refresh the empty-room page when a user leaves
   socket.on("generateList2", (data) => {
+    console.log('SOCKET generateList2', { roomNumber: data && data.roomNumber });
     socket.join("room-" + data.roomNumber);
     io.sockets.in("room-" + data.roomNumber).emit("refreshList2");
   });
 
   // Used to generate room with its members
   socket.on("message", (data) => {
+    console.log('SOCKET message (join)', { roomNumber: data && data.roomNumber, steamID: data && data.steamID });
     // Comes from the front end; number was made in another route (room choice).
     let roomNumber = data.roomNumber;
     // Validate roomNumber to ensure it consists of exactly 5 digits
@@ -848,7 +968,14 @@ io.on("connection", (socket) => {
 
     // Re-find the room again and send the output of users to the front-end
     potentialRoom = socketRooms.find((x) => x.roomNumber === roomNumber);
-    roomMembers = potentialRoom.roomMembers;
+    if (!potentialRoom) {
+      console.error('SOCKET message: potentialRoom not found after push', { roomNumber });
+      // As a fallback, create it
+      const tmp = new Room(roomNumber, [ [data.steamID, data.username, data.avatar] ]);
+      socketRooms.push(tmp);
+      potentialRoom = tmp;
+    }
+    const roomMembers = potentialRoom.roomMembers || [];
 
     // Emits data to everyone in a room
     io.sockets.in("room-" + roomNumber).emit("otherMsg", roomMembers);
@@ -856,6 +983,7 @@ io.on("connection", (socket) => {
 
   // Emits data to reroute users in a room
   socket.on("newList", (data) => {
+    console.log('SOCKET newList -> emit navigate', { roomNumber: data && data.roomNumber });
     socket.join("room-" + data.roomNumber);
     io.sockets.in("room-" + data.roomNumber).emit("navigate");
   });
@@ -863,10 +991,19 @@ io.on("connection", (socket) => {
   // MAIN WORKHORSE FUNCTION. Gathers the SteamIDs of the room members and uses them to generate the massive list of shared games.
   // Sort by amount of time played and then generate shared list
   socket.on("generate", async (data) => {
+    console.log('SOCKET generate start', { roomNumber: data && data.roomNumber, steamID: data && data.steamID });
     const roomNumber = data.roomNumber;
-    const roomMembers = socketRooms.find(
-      (x) => x.roomNumber === roomNumber
-    ).roomMembers;
+    let roomObj = socketRooms.find((x) => x.roomNumber === roomNumber);
+    if (!roomObj) {
+      console.warn('SOCKET generate: room not found, creating on-the-fly', { roomNumber });
+      const members = [];
+      if (data && data.steamID) {
+        members.push([data.steamID, data.username || '', data.avatar || '']);
+      }
+      roomObj = new Room(roomNumber, members);
+      socketRooms.push(roomObj);
+    }
+    const roomMembers = roomObj.roomMembers || [];
 
     // Queries all multiplayer games
     let query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1`;
@@ -913,6 +1050,17 @@ io.on("connection", (socket) => {
     // First we'll iterate through EVERY room member. Goal is to run through each user and their games and "tick" off who owns what.
     for (let i = 0; i < roomMembers.length; i++) {
       const currentUserID = roomMembers[i][0];
+      // Ensure this user's library has been synced to the DB at least once
+      try {
+        const hasAnyGames = await db
+          .prepare("SELECT * FROM Games NATURAL JOIN Users WHERE userID = ?")
+          .all(currentUserID);
+        if (!Array.isArray(hasAnyGames) || hasAnyGames.length === 0) {
+          await checkGames(currentUserID);
+        }
+      } catch (e) {
+        console.error(`GENERATE: ensure sync failed for user ${currentUserID}:`, e.message || e);
+      }
       // Now we retrieve all the users recorded games and we'll loop those.
       // Query will only retrieve MULTI PLAYER games for the current user.
       const currentUsersGames = await db.prepare(query).all(currentUserID);
@@ -960,6 +1108,7 @@ io.on("connection", (socket) => {
     }
 
     // Finally emit the data to all room members INDIVIDUALLY so filtering options don't change the page for everyone.
+    console.log('SOCKET generate done -> emit finalList', { toSocket: socket.id, count: sharedGameNames.length });
     io.to(socket.id).emit("finalList", {
       roomMembers: roomMembers,
       games: sharedGameNames,
@@ -1011,12 +1160,12 @@ app.get("/altTest", async (req, res) => {
     // TODO: Add Short Description to our games so we can provide extended details on a game.
 
     // FIRST we query our database to see if we HAVE the game or not
-    const localGame = db
+    const localGame = await db
       .prepare("SELECT * FROM Games WHERE gameID = ?")
       .get(`${gameID}`);
 
     // Then check if the user has the local game registered in the database
-    const userPotentialGame = db
+    const userPotentialGame = await db
       .prepare("SELECT * FROM Users WHERE userID = ? AND gameID = ?")
       .get([`${steamID}`, `${gameID}`]);
 
@@ -1038,13 +1187,13 @@ app.get("/altTest", async (req, res) => {
         // console.log(`${final_price} ${initial_price} ${tempAge} ${localGame.gameID}`);
 
         // TODO: Could a single player game become a multiplayer one in the future?
-        db.prepare(
+        await db.prepare(
           `UPDATE Games SET price = ?, initial_price = ?, age = ? WHERE gameID = ?`
         ).run(final_price, initial_price, tempAge, localGame.gameID);
       }
       // If they don't have the game in their table we add it to their database else do nothing
       if (!userPotentialGame) {
-        db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?, ?)`).run(
+        await db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?, ?)`).run(
           steamID,
           `${gameID}`
         );
@@ -1067,7 +1216,7 @@ app.get("/altTest", async (req, res) => {
       }
 
     //   console.log(`Added ${gameName} - ${gameID}!`);
-      db.prepare(
+      await db.prepare(
         `INSERT INTO Games(gameID, name, genre, tags, age, price, initial_price, is_multiplayer, header_image, store_url, description) VALUES (?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
         `${gameID}`,
@@ -1083,7 +1232,7 @@ app.get("/altTest", async (req, res) => {
         short_description
       );
 
-      db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
+      await db.prepare(`INSERT INTO Users (userID, gameID) VALUES (?,?)`).run(
         steamID,
         `${gameID}`
       );
@@ -1151,6 +1300,7 @@ app.get("/logout", (req, res) => {
   res.clearCookie("avatar");
   res.clearCookie("roomNumber");
   res.clearCookie("isDemo");
+  res.clearCookie("stayOnList");
 
   // While it'd be nice to use just normal index ("/") we have to use alt for now to prevent users from hitting back on their browser and breaking the site.
   // This also lets us display a "logout" message properly to users. 
@@ -1183,6 +1333,7 @@ app.get("/leave", (req, res) => {
     }
 
     res.clearCookie("roomNumber");
+    res.clearCookie("stayOnList");
     if (isDemo == `true`) {
         // Since a user might try to leave a demo, this should just in a sense act as "logout" and clear their cookies & bring them back to the homepage.
         res.clearCookie("steamID");
