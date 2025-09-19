@@ -4,3 +4,5 @@ private/*
 //Ignore all Node Module Folders Recursively
 **node_modules
 process.env
+.vercel
+.env*.local

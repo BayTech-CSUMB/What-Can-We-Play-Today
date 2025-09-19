@@ -26,8 +26,12 @@ function withTrailingSlash(url) {
 // Canonical host/protocol enforcement (helps avoid OpenID host mismatches)
 app.use((req, res, next) => {
   try {
-    const enforce = (process.env.ENFORCE_CANONICAL || (process.env.VERCEL ? 'true' : 'false')).toLowerCase();
-    if (enforce !== 'true') return next();
+    // Only enforce canonical domain in production deployments.
+    // In Vercel preview deployments (VERCEL_ENV !== 'production') this stays off so preview URLs work.
+    const vercelEnv = process.env.VERCEL_ENV || '';
+    const isProdDeploy = vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
+    const enforceFlag = (process.env.ENFORCE_CANONICAL || (isProdDeploy ? 'true' : 'false')).toLowerCase();
+    if (enforceFlag !== 'true') return next();
 
     // Do NOT redirect the OpenID callback path to avoid breaking verification
     if (req.path.startsWith('/auth/steam/authenticate')) return next();
