@@ -40,6 +40,8 @@ app.use((req, res, next) => {
     const hostHeaderRaw = req.headers['x-forwarded-host'] || req.headers.host || '';
     const hostHeader = hostHeaderRaw.split(',')[0].trim();
     if (/^(localhost|127\.0\.0\.1)(:\\d+)?$/.test(hostHeader)) return next();
+    // Never enforce on Vercel default/preview domains
+    if (/\.vercel\.app$/i.test(hostHeader)) return next();
 
     const canonicalUrl = process.env.SITE_URL;
     if (!canonicalUrl) return next();
