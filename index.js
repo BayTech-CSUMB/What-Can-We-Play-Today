@@ -95,14 +95,19 @@ const config = {
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
-// Configure CORS for Express
+// Configure CORS for Express (allow localhost and Vercel preview/default domains)
+const originAllowList = [
+  /^https?:\/\/localhost(?::\d+)?$/,
+  /^https:\/\/.*\.vercel\.app$/
+];
+
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://whatcanweplay.today", 
-    "https://www.whatcanweplay.today",
-    /https:\/\/.*\.vercel\.app$/
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like curl or same-origin)
+    if (!origin) return callback(null, true);
+    const ok = originAllowList.some((re) => re.test(origin));
+    return ok ? callback(null, true) : callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Cookie"]
@@ -184,22 +189,17 @@ let server = require("http").createServer(app);
 //   console.log(`STARTUP: HTTP Redirecter Server Up on Port 80!\n Site running on: http://localhost`)
 // );
 
-// Configure CORS for Socket.IO based on environment
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://whatcanweplay.today", 
-  "https://www.whatcanweplay.today",
-  "https://what-can-we-play-today-bbybts4rd-yukioriveras-projects.vercel.app",
-  "https://what-can-we-play-today-5bp1w1sxl-yukioriveras-projects.vercel.app",
-  "https://what-can-we-play-today-rfy5ggou4-yukioriveras-projects.vercel.app"
-];
-
-const io = require("socket.io")(server, { 
-  cors: { 
-    origin: allowedOrigins,
+// Configure CORS for Socket.IO (allow localhost and Vercel preview/default domains)
+const io = require("socket.io")(server, {
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const ok = originAllowList.some((re) => re.test(origin));
+      return ok ? callback(null, true) : callback(new Error('Not allowed by CORS'));
+    },
     methods: ["GET", "POST"],
     credentials: true
-  } 
+  }
 });
 
 // Setting up a helper Wrapper library to make the Steam API much easier to use
