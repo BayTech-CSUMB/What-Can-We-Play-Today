@@ -805,16 +805,8 @@ app.post("/room-choice", async (req, res) => {
   existingRooms.push(roomNumber);
   res.cookie("roomNumber", roomNumber);
 
-  // Render the next page for the Host now with the number on their page.
-  res.redirect(
-    "empty-room",
-    {
-      role: req.body.role,
-      roomNumber: this.roomNumber,
-      url: config.socketUrl,
-    },
-    303
-  );
+  // Redirect via 303 to force GET and use absolute path
+  res.redirect(303, "/empty-room");
 });
 
 // Renders join room page with all the currently existing rooms
@@ -901,7 +893,7 @@ app.post("/alt-login", async (req, res) => {
     res.cookie("steamID", steamID);
     res.cookie("username", username);
     res.cookie("avatar", profileImg);
-    res.redirect(303, "room-choice");
+    res.redirect(303, "/room-choice");
   } catch (error) {
     // TODO: a specific status code from Steam 429 shows up when we've reached 
     // our API limit from them, could display that too & other more specific 
