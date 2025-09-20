@@ -1405,5 +1405,8 @@ cron.schedule('*/10 * * * *', async () => {
 });
 }
 
-// Export the Express app for Vercel's serverless function handler
-module.exports = app;
+// Export a request handler that proxies to the HTTP server so Socket.IO endpoints work on Vercel
+// This allows Engine.IO polling endpoints (e.g., /socket.io/) to be handled by the same server
+module.exports = (req, res) => {
+  return server.emit('request', req, res);
+};
