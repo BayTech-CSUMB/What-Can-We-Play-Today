@@ -212,6 +212,24 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       const data = await resp.json();
       console.log('[LIST] /api/generate response', { keys: Object.keys(data || {}), games: data && data.games && data.games.length });
 
+      // If no games yet, ask server to process queued games and retry shortly
+      if (!data || !Array.isArray(data.games) || data.games.length === 0) {
+        console.warn('[LIST] No games yet; triggering enrichment + retry');
+        try {
+          const r = await fetch('/api/cron/process-pending', { method: 'POST' });
+          const j = await r.json().catch(() => ({}));
+          console.log('[LIST] process-pending result', j);
+        } catch (e) {
+          console.warn('[LIST] process-pending failed', e);
+        }
+        // Keep spinner visible and try again in 3s
+        setTimeout(() => {
+          console.log('[LIST] retrying generate after enrichment');
+          sendMessage();
+        }, 3000);
+        return;
+      }
+
     // Render data returned by API
     (function renderList(data){
       console.log('[LIST] finalList received', {
