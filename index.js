@@ -7,6 +7,7 @@ if (!process.env.VERCEL) {
 }
 
 // Critical for Express itself
+const path = require('path');
 const express = require("express");
 const app = express();
 // Trust proxy headers (Vercel/Proxies) so protocol/host are detected correctly
@@ -230,8 +231,9 @@ app.use(limiter);
 
 // Tell Express which Templating Engine we're using
 app.set("view engine", "ejs");
-// Specify the Folder for Statics
-app.use(express.static("public"));
+// Ensure Express knows where to find views/static in serverless env
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.static(path.join(__dirname, 'public')));
 // Need this line to allow Express to parse values sent by POST forms
 app.use(express.urlencoded({ extended: true }));
 // Setup our database connection (Supabase for production, SQLite for local dev)
