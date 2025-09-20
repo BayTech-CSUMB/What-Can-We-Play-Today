@@ -21,7 +21,6 @@
   logout.addEventListener('click', function(){
     let roomNumber = Cookies.get("roomNumber");
     sessionStorage.clear();
-    socket.emit('generateList', {roomNumber: roomNumber});
     window.location.href = "/logout";
   });
 </script>
