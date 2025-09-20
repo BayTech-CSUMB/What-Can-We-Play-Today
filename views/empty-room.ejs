@@ -36,10 +36,12 @@
     const username = Cookies.get('username');
     const avatar = Cookies.get('avatar');
     const roomNumber = Cookies.get('roomNumber');
+    console.log('[EMPTY] Cookies', { steamID, username, hasAvatar: !!avatar, roomNumber });
     const channel = (window.supabaseClient && roomNumber)
       ? window.supabaseClient.channel('room-' + roomNumber, { config: { presence: { key: steamID || Math.random().toString(36).slice(2) } } })
       : null;
     if (channel) {
+      console.log('[EMPTY] Subscribing to channel', 'room-' + roomNumber);
       channel.on('presence', { event: 'sync' }, () => {
         // Build member list from presence state and render avatars
         try {
@@ -50,7 +52,7 @@
               members.push([meta.steamID || key, meta.username || '', meta.avatar || '']);
             });
           });
-          console.log('[EMPTY] presence sync', { count: members.length });
+          console.log('[EMPTY] presence sync', { count: members.length, state });
           const divAppend = document.getElementById('toGen');
           divAppend.innerHTML = '';
           const seen = new Set();
@@ -70,7 +72,9 @@
         window.location.href = '/list';
       });
       channel.subscribe((status) => {
+        console.log('[EMPTY] channel status', status);
         if (status === 'SUBSCRIBED') {
+          console.log('[EMPTY] tracking presence', { steamID, username, hasAvatar: !!avatar });
           channel.track({ steamID, username, avatar });
         }
       });
@@ -92,6 +96,7 @@
         console.log('[EMPTY] Generate List clicked');
         try { sessionStorage.setItem('stayOnList', '1'); document.cookie = 'stayOnList=1; path=/'; } catch (_) {}
         if (channel) {
+          console.log('[EMPTY] broadcasting navigate');
           channel.send({ type: 'broadcast', event: 'navigate', payload: {} });
         }
         window.location.href = '/list';

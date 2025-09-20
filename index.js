@@ -720,6 +720,11 @@ app.post('/api/generate', async (req, res) => {
       minPriceSelection = '',
       maxPriceSelection = ''
     } = req.body || {};
+    console.log('API /api/generate start', {
+      roomNumber,
+      membersCount: Array.isArray(members) ? members.length : 0,
+      tagSelection, categorySelection, priceSelection, minPriceSelection, maxPriceSelection
+    });
 
     // Normalize members to array of [steamID, username, avatar]
     const roomMembers = Array.isArray(members)
@@ -743,6 +748,7 @@ app.post('/api/generate', async (req, res) => {
     } else if (!(minPriceSelection === '' && maxPriceSelection === '')) {
       query += ` AND price >= ${minPriceSelection} AND price <= ${maxPriceSelection}`;
     }
+    console.log('API /api/generate query', { query });
 
     let sharedGameNames = [];
     let ownedByWho = [];
@@ -755,12 +761,14 @@ app.post('/api/generate', async (req, res) => {
 
     for (let i = 0; i < roomMembers.length; i++) {
       const currentUserID = roomMembers[i][0];
+      console.log('API /api/generate user', { index: i, currentUserID });
       // Ensure library is synced at least once
       try {
         const hasAnyGames = await db
           .prepare("SELECT * FROM Games NATURAL JOIN Users WHERE userID = ?")
           .all(currentUserID);
         if (!Array.isArray(hasAnyGames) || hasAnyGames.length === 0) {
+          console.log('API /api/generate ensure sync -> running checkGames');
           await checkGames(currentUserID);
         }
       } catch (e) {
@@ -769,6 +777,7 @@ app.post('/api/generate', async (req, res) => {
 
       const currentUsersGames = await db.prepare(query).all(currentUserID);
       const gamesArray = Array.isArray(currentUsersGames) ? currentUsersGames : [];
+      console.log('API /api/generate user games', { index: i, count: gamesArray.length });
 
       gamesArray.forEach((curGame) => {
         const indexOfGame = sharedGameNames.indexOf(curGame.name);
@@ -794,6 +803,10 @@ app.post('/api/generate', async (req, res) => {
       });
     }
 
+    console.log('API /api/generate final', {
+      roomMembers: roomMembers.length,
+      games: sharedGameNames.length
+    });
     res.json({
       roomMembers,
       games: sharedGameNames,
@@ -829,12 +842,14 @@ app.get("/privacy-policy", (req, res) => {
 app.get("/auth/steam", async (req, res) => {
   try {
     const base = getBaseUrl(req);
+    console.log('LOGIN /auth/steam start', { base });
     const steam = new SteamAuth({
       realm: withTrailingSlash(base),
       returnUrl: `${base}/auth/steam/authenticate`,
       apiKey: config.steamKey,
     });
     const redirectUrl = await steam.getRedirectUrl();
+    console.log('LOGIN /auth/steam redirecting -> Steam');
     return res.redirect(redirectUrl);
   } catch (e) {
     console.error('LOGIN: Failed to get Steam redirect URL', {
@@ -850,6 +865,7 @@ app.get("/auth/steam", async (req, res) => {
 app.get("/auth/steam/authenticate", async (req, res) => {
   try {
     const base = getBaseUrl(req);
+    console.log('LOGIN callback start', { base, queryKeys: Object.keys(req.query || {}).length });
     const steam = new SteamAuth({
       realm: withTrailingSlash(base),
       returnUrl: `${base}/auth/steam/authenticate`,
@@ -859,6 +875,7 @@ app.get("/auth/steam/authenticate", async (req, res) => {
     steamAPICount += 1;
 
     console.log(`LOGIN: ${user["username"]} has successfully logged in!`);
+    console.log('LOGIN callback setting cookies', { steamid: user["steamid"] });
 
     // TODO: Check that this cookie storage method is best practices.
     res.cookie("steamID", user["steamid"]);
@@ -906,6 +923,7 @@ app.get("/room-choice", (req, res) => {
 
 // Passes host role and creates a unique room
 app.post("/room-choice", async (req, res) => {
+  console.log('ROOM-CHOICE POST', { body: req.body });
   let roomNumber = Math.floor(Math.random() * 90000) + 10000;
   roomNumber = roomNumber.toString();
   // Ensures that room numbers are random and unique so we don't have colliding room IDs.
@@ -919,6 +937,7 @@ app.post("/room-choice", async (req, res) => {
   res.cookie("roomNumber", roomNumber);
 
   // Redirect via 303 to force GET and use absolute path
+  console.log('ROOM-CHOICE redirect -> /empty-room', { roomNumber });
   res.redirect(303, "/empty-room");
 });
 
@@ -950,7 +969,9 @@ app.get("/list", async (req, res) => {
   console.log('ROUTE /list', {
     cookies: Object.keys(req.cookies || {}),
     stayOnList: req.cookies && req.cookies.stayOnList,
-    referer: req.headers['referer'] || null
+    referer: req.headers['referer'] || null,
+    roomNumber: req.cookies && req.cookies.roomNumber,
+    steamID: req.cookies && req.cookies.steamID
   });
   // two guard clauses here to redirect users who shouldn't be in list w/out a steam ID & room number.
   if (req.cookies.roomNumber == null && req.cookies.steamID == null) {
@@ -967,7 +988,9 @@ app.get("/empty-room", async (req, res) => {
   console.log('ROUTE /empty-room', {
     cookies: Object.keys(req.cookies || {}),
     stayOnList: req.cookies && req.cookies.stayOnList,
-    referer: req.headers['referer'] || null
+    referer: req.headers['referer'] || null,
+    roomNumber: req.cookies && req.cookies.roomNumber,
+    steamID: req.cookies && req.cookies.steamID
   });
   // If user has indicated they should remain on /list (client cookie), honor it
   if (req.cookies && req.cookies.stayOnList === '1') {

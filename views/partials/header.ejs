@@ -27,15 +27,26 @@
     <script>
       (function(){
         try {
+          console.log('[BOOT] Initializing Supabase client...');
           if (!window.supabaseClient) {
             const url = '<%= (publicEnv && publicEnv.SUPABASE_URL) || "" %>';
             const key = '<%= (publicEnv && publicEnv.SUPABASE_ANON_KEY) || "" %>';
             if (url && key && window.supabase) {
               window.supabaseClient = window.supabase.createClient(url, key, { auth: { persistSession: false } });
+              console.log('[BOOT] Supabase client initialized');
+            } else {
+              console.warn('[BOOT] Missing Supabase URL or Anon Key; realtime disabled', { hasUrl: !!url, hasKey: !!key });
             }
           }
         } catch (e) { /* no-op */ }
       })();
+      // Global error logging for quick debugging
+      window.addEventListener('error', function(e){
+        try { console.error('[GLOBAL ERROR]', e.message || e, e.filename, e.lineno, e.colno); } catch(_){}
+      });
+      window.addEventListener('unhandledrejection', function(e){
+        try { console.error('[GLOBAL REJECTION]', e.reason); } catch(_){}
+      });
     </script>
 </head>
 <body>

@@ -31,12 +31,14 @@
 <script>
     // Loading animation is hidden at the beginning
     document.getElementById('animationContainer').style.display = 'none';
+    console.log('[ROOM-CHOICE] Loaded');
 
     // Initialized variables to be used
     let username = document.querySelector('#isUser');
     let temp = Cookies.get('username');
     // TODO: Change the username to a different color
     username.innerHTML = `Welcome ${temp}!`;
+    console.log('[ROOM-CHOICE] User from cookies', { username: temp, steamID: Cookies.get('steamID') });
     let avatar = Cookies.get('avatar');
     let profilePic = document.querySelector("#userAvatar");
     profilePic.innerHTML += `<img src="${avatar}" alt="Icon for ${username}" />`;
@@ -45,6 +47,7 @@
     function displayAnimation() {
         document.getElementById('animationContainer').style.display = 'flex';
         document.querySelector(".gradient-background").style.display = "none";
+        console.log('[ROOM-CHOICE] Create Room clicked -> POST /room-choice');
     }
     
     // This essentially prevents the user from going back w the browser and 

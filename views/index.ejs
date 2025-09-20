@@ -92,12 +92,14 @@
     // Accept button redirects to login through steam
     var acceptButton = document.getElementById("close");
     acceptButton.addEventListener('click', function() {
+        console.log('[INDEX] Steam login accepted -> redirect /auth/steam');
         window.location.href = "/auth/steam";
     });
 
     // Demo button redirects the user to the website demo feature
     var demoButton = document.getElementById("demo");
     demoButton.addEventListener('click', function() {
+        console.log('[INDEX] Demo clicked -> /demo');
         window.location.href = "/demo";
     });
     
@@ -111,6 +113,7 @@
     // Accept button redirects user to login using steam id only
     var acceptButton2 = document.getElementById("close2");
     acceptButton2.addEventListener('click', function() {
+        console.log('[INDEX] Alt login -> /alt-login');
         window.location.href = "/alt-login";
     });
 

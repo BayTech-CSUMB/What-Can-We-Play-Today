@@ -70,6 +70,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
   const username = Cookies.get('username');
   const avatar = Cookies.get('avatar');
   const roomNumber = Cookies.get('roomNumber');
+  console.log('[LIST] Cookies', { steamID, username, hasAvatar: !!avatar, roomNumber });
   const channel = (window.supabaseClient && roomNumber)
     ? window.supabaseClient.channel('room-' + roomNumber, { config: { presence: { key: steamID || Math.random().toString(36).slice(2) } } })
     : null;
@@ -86,6 +87,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       }
     });
     channel.subscribe((status) => {
+      console.log('[LIST] channel status', status);
       if (status === 'SUBSCRIBED') {
         channel.track({ steamID, username, avatar });
       }
@@ -189,20 +191,26 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       }
     } catch (_) { members = [[steamID, username, avatar]]; }
 
-    const resp = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        roomNumber,
-        members,
-        tagSelection: sessionStorage.getItem("tagSelection"),
-        categorySelection: sessionStorage.getItem("categorySelection"),
-        priceSelection: sessionStorage.getItem("priceSelection"),
-        minPriceSelection: sessionStorage.getItem("minPriceSelection"),
-        maxPriceSelection: sessionStorage.getItem("maxPriceSelection"),
-      })
-    });
-    const data = await resp.json();
+    try {
+      const resp = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomNumber,
+          members,
+          tagSelection: sessionStorage.getItem("tagSelection"),
+          categorySelection: sessionStorage.getItem("categorySelection"),
+          priceSelection: sessionStorage.getItem("priceSelection"),
+          minPriceSelection: sessionStorage.getItem("minPriceSelection"),
+          maxPriceSelection: sessionStorage.getItem("maxPriceSelection"),
+        })
+      });
+      if (!resp.ok) {
+        console.error('[LIST] /api/generate non-200', { status: resp.status });
+        return;
+      }
+      const data = await resp.json();
+      console.log('[LIST] /api/generate response', { keys: Object.keys(data || {}), games: data && data.games && data.games.length });
 
     // Render data returned by API
     (function renderList(data){
@@ -248,7 +256,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       currentRoomNum.textContent = roomNumber;
       document.getElementById("animationContainer").style.display = "none";
       document.getElementById("listPageLayout").style.display = "flex";
-
+      
       // Creates dropdown menu for the categories
       function dropDownMenu1() {
         const menu = document.createElement("select");
@@ -649,6 +657,9 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
     jSuites.notification({
       name: "Copied to Clipboard",
     })(data);
+    } catch (e) {
+      console.error('[LIST] /api/generate failed', e);
+    }
   }
 
     // Utilizing jSuite notifs to give a simple popup for users in Demo mode
