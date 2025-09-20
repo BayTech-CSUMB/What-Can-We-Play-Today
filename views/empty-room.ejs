@@ -82,42 +82,9 @@
     sessionStorage.setItem('priceSelection', '');
     sessionStorage.setItem('minPriceSelection', '');
     sessionStorage.setItem('maxPriceSelection', '');
-    // Fetches data from Cookies and send it to the back-end. Runs on page load.
-    const sendMessage = () => {
-        console.log('[EMPTY] sendMessage');
-        let steamID = Cookies.get('steamID');
-        let username = Cookies.get('username');
-        let avatar = Cookies.get('avatar');
-        let roomNumber = Cookies.get('roomNumber');
-        const payload = {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber};
-        console.log('[EMPTY] emit message', payload);
-        socket.emit('message', payload);
-    }
-    window.addEventListener('DOMContentLoaded', () => {
-        sendMessage();
-    });
+    // Legacy Socket.IO join removed; presence tracking handles membership
      
-    // Receives data from Back-end when other users join.
-    socket.on('otherMsg', (data) => {
-        console.log('[EMPTY] otherMsg received', { members: Array.isArray(data) ? data.length : 0 });
-        let userImages = [];
-        // Sets up the image div with the first user that joins
-        let divAppend = document.getElementById('toGen');
-        // go through all user images and only add them to an output array if 
-        // they're not already there.
-        for (let i = 0; i < data.length; i++) {
-            if (!userImages.includes(data[i][2])) {
-                let imgEle = document.createElement('img');
-                imgEle.src = data[i][2];
-                userImages.push(imgEle);
-            }
-        }
-        // clear the div before iterating through the user images and appending
-        divAppend.innerHTML = "";
-        for (let j = 0; j < userImages.length; j++) {
-            divAppend.appendChild(userImages[j]);
-        }
-    });
+    // Presence sync will render avatars (see channel.on('presence','sync') above)
 
     // Button used to dynamically reload page for all members
     let button = document.getElementById('newList');
@@ -139,12 +106,6 @@
     });
 
     // Presence sync will update the UI for joins/leaves
-    
-    // redirects to list page
-    socket.on('navigate', function() {
-        console.log('[EMPTY] navigate received -> /list');
-        window.location.href = "/list";
-    });
 
     // Used to copy the room number
     function copyFunction() {
