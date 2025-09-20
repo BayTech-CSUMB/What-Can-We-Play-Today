@@ -117,6 +117,7 @@ app.use(cors({
 }));
 
 app.use(cookieParser());
+app.use(express.json());
 const fetch = require("node-fetch");
 const axios = require("axios");
 const moment = require("moment");
@@ -194,6 +195,9 @@ let server = require("http").createServer(app);
 
 // Configure CORS for Socket.IO (allow localhost and Vercel preview/default domains)
 const io = require("socket.io")(server, {
+  // Force polling; WebSockets are unreliable on serverless
+  transports: ["polling"],
+  allowUpgrades: false,
   cors: {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
@@ -234,6 +238,12 @@ app.set("view engine", "ejs");
 // Ensure Express knows where to find views/static in serverless env
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Expose safe public env to views (for client-side Supabase usage)
+app.locals.publicEnv = {
+  SUPABASE_URL: process.env.SUPABASE_URL || '',
+  SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
+};
 // Need this line to allow Express to parse values sent by POST forms
 app.use(express.urlencoded({ extended: true }));
 // Setup our database connection (Supabase for production, SQLite for local dev)
@@ -695,6 +705,109 @@ app.post("/api/cron/process-pending", async (req, res) => {
       error: error.message || 'Unknown error',
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// API: Generate shared games list for current room members (provided by client)
+app.post('/api/generate', async (req, res) => {
+  try {
+    const {
+      roomNumber,
+      members = [],
+      tagSelection = '',
+      categorySelection = '',
+      priceSelection = '',
+      minPriceSelection = '',
+      maxPriceSelection = ''
+    } = req.body || {};
+
+    // Normalize members to array of [steamID, username, avatar]
+    const roomMembers = Array.isArray(members)
+      ? members.map((m) => Array.isArray(m) ? m : [m.steamID || m.user_id || '', m.username || '', m.avatar || ''])
+      : [];
+
+    // Build base query
+    let query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1`;
+    if (tagSelection && String(tagSelection).trim() !== '') {
+      query += ` AND tags LIKE '%${tagSelection}%'`;
+    }
+    if (categorySelection && String(categorySelection).trim() !== '') {
+      query += ` AND genre LIKE '%${categorySelection}%'`;
+    }
+    if (priceSelection === 'FREE') {
+      query += ` AND price = 0`;
+    } else if (priceSelection === 'Under $10') {
+      query += ` AND price <= 10`;
+    } else if (priceSelection === 'Under $40') {
+      query += ` AND price <= 40`;
+    } else if (!(minPriceSelection === '' && maxPriceSelection === '')) {
+      query += ` AND price >= ${minPriceSelection} AND price <= ${maxPriceSelection}`;
+    }
+
+    let sharedGameNames = [];
+    let ownedByWho = [];
+    let gameImages = [];
+    let gameLinks = [];
+    let gameTags = [];
+    let gamePrices = [];
+    let allPotentialTags = [];
+    let gameDesc = [];
+
+    for (let i = 0; i < roomMembers.length; i++) {
+      const currentUserID = roomMembers[i][0];
+      // Ensure library is synced at least once
+      try {
+        const hasAnyGames = await db
+          .prepare("SELECT * FROM Games NATURAL JOIN Users WHERE userID = ?")
+          .all(currentUserID);
+        if (!Array.isArray(hasAnyGames) || hasAnyGames.length === 0) {
+          await checkGames(currentUserID);
+        }
+      } catch (e) {
+        console.error(`API GENERATE: ensure sync failed for user ${currentUserID}:`, e.message || e);
+      }
+
+      const currentUsersGames = await db.prepare(query).all(currentUserID);
+      const gamesArray = Array.isArray(currentUsersGames) ? currentUsersGames : [];
+
+      gamesArray.forEach((curGame) => {
+        const indexOfGame = sharedGameNames.indexOf(curGame.name);
+        if (indexOfGame !== -1) {
+          ownedByWho[indexOfGame].push(i);
+        } else {
+          sharedGameNames.push(curGame.name);
+          gameImages.push(curGame.header_image);
+          gameLinks.push(curGame.store_url);
+          gameTags.push(curGame.tags);
+          const prices = [];
+          const initial_price = curGame.initial_price;
+          const final_price = curGame.price;
+          prices.push(final_price);
+          if (initial_price !== '' && initial_price !== 0) {
+            prices.push(initial_price);
+          }
+          gamePrices.push(prices);
+          gameDesc.push(curGame.description);
+          ownedByWho.push([i]);
+          allPotentialTags = maintainTags(curGame.tags, allPotentialTags);
+        }
+      });
+    }
+
+    res.json({
+      roomMembers,
+      games: sharedGameNames,
+      owners: ownedByWho,
+      images: gameImages,
+      links: gameLinks,
+      tags: gameTags,
+      prices: gamePrices,
+      categories: allPotentialTags,
+      descriptions: gameDesc
+    });
+  } catch (error) {
+    console.error('API GENERATE error:', error.message || error);
+    res.status(500).json({ error: 'Failed to generate list' });
   }
 });
 

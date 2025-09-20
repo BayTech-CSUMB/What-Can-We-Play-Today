@@ -65,19 +65,30 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
   document.getElementById("listPageLayout").style.display = "none";
   let listReady = false;
 
-  // Setup for socket connection
-  const socket = io("<%= url %>");
-  console.log('[LIST] Socket connecting...');
-  socket.on('connect', () => {
-    console.log('[LIST] Socket connected', { id: socket.id });
-  });
+  // Setup Supabase Realtime channel for this room
+  const steamID = Cookies.get('steamID');
+  const username = Cookies.get('username');
+  const avatar = Cookies.get('avatar');
+  const roomNumber = Cookies.get('roomNumber');
+  const channel = (window.supabaseClient && roomNumber)
+    ? window.supabaseClient.channel('room-' + roomNumber, { config: { presence: { key: steamID || Math.random().toString(36).slice(2) } } })
+    : null;
+  if (channel) {
+    channel.on('broadcast', { event: 'navigate' }, () => {
+      try { sessionStorage.setItem('stayOnList', '1'); document.cookie = 'stayOnList=1; path=/'; } catch (_) {}
+      if (window.location.pathname !== '/list') window.location.href = '/list';
+    });
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        channel.track({ steamID, username, avatar });
+      }
+    });
+  }
 
   let leave = document.getElementById("leave");
   leave.addEventListener("click", function () {
     console.log('[LIST] Leave clicked');
-    let roomNumber = Cookies.get("roomNumber");
     sessionStorage.clear();
-    socket.emit("generateList", { roomNumber: roomNumber });
     window.location.href = "/leave";
   });
 
@@ -109,7 +120,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
 
   // TODO: does everything need to be in sendMessage?
   // Connection used for sockets
-  const sendMessage = () => {
+  const sendMessage = async () => {
     console.log('[LIST] sendMessage start');
     // Initializes data of user from cookies
     let steamID = Cookies.get("steamID");
@@ -155,12 +166,39 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       minPriceSelection: sessionStorage.getItem("minPriceSelection"),
       maxPriceSelection: sessionStorage.getItem("maxPriceSelection"),
     };
-    console.log('[LIST] emit generate', payload);
-    socket.emit("generate", payload);
+    console.log('[LIST] calling /api/generate', payload);
+    // Build current members from presence state if available
+    let members = [];
+    try {
+      if (channel) {
+        const state = channel.presenceState();
+        Object.keys(state).forEach((key) => {
+          (state[key] || []).forEach((meta) => {
+            members.push([meta.steamID || key, meta.username || '', meta.avatar || '']);
+          });
+        });
+      } else {
+        members = [[steamID, username, avatar]];
+      }
+    } catch (_) { members = [[steamID, username, avatar]]; }
 
-    // Receives data then displays a list of games
-    socket.off("finalList");
-    socket.on("finalList", (data) => {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomNumber,
+        members,
+        tagSelection: sessionStorage.getItem("tagSelection"),
+        categorySelection: sessionStorage.getItem("categorySelection"),
+        priceSelection: sessionStorage.getItem("priceSelection"),
+        minPriceSelection: sessionStorage.getItem("minPriceSelection"),
+        maxPriceSelection: sessionStorage.getItem("maxPriceSelection"),
+      })
+    });
+    const data = await resp.json();
+
+    // Render data returned by API
+    (function renderList(data){
       console.log('[LIST] finalList received', {
         games: data && data.games ? data.games.length : 0,
         owners: data && data.owners ? data.owners.length : 0
@@ -621,7 +659,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
   function showSuccess() {
     jSuites.notification({
       name: "Copied to Clipboard",
-    });
+    })(data);
   }
 
     // Utilizing jSuite notifs to give a simple popup for users in Demo mode

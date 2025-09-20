@@ -23,6 +23,21 @@
 
     <script src="https://jsuites.net/v4/jsuites.js"></script>
     <link rel="stylesheet" href="https://jsuites.net/v4/jsuites.css" type="text/css" />
+    <!-- Supabase JS (for Realtime Channels) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      (function(){
+        try {
+          if (!window.supabaseClient) {
+            const url = '<%= (publicEnv && publicEnv.SUPABASE_URL) || "" %>';
+            const key = '<%= (publicEnv && publicEnv.SUPABASE_ANON_KEY) || "" %>';
+            if (url && key && window.supabase) {
+              window.supabaseClient = window.supabase.createClient(url, key, { auth: { persistSession: false } });
+            }
+          }
+        } catch (e) { /* no-op */ }
+      })();
+    </script>
 </head>
 <body>
     <!-- BOOTSTRAP JS CDN -->

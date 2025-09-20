@@ -31,12 +31,50 @@
             window.location.replace('/list');
         }
     } catch (_) {}
-    // Sets up our Socket connections
-    const socket = io('<%= url %>');
-    console.log('[EMPTY] Socket connecting...');
-    socket.on('connect', () => {
-        console.log('[EMPTY] Socket connected', { id: socket.id });
-    });
+    // Setup Supabase Realtime Channel for this room
+    const steamID = Cookies.get('steamID');
+    const username = Cookies.get('username');
+    const avatar = Cookies.get('avatar');
+    const roomNumber = Cookies.get('roomNumber');
+    const channel = (window.supabaseClient && roomNumber)
+      ? window.supabaseClient.channel('room-' + roomNumber, { config: { presence: { key: steamID || Math.random().toString(36).slice(2) } } })
+      : null;
+    if (channel) {
+      channel.on('presence', { event: 'sync' }, () => {
+        // Build member list from presence state and render avatars
+        try {
+          const state = channel.presenceState();
+          const members = [];
+          Object.keys(state).forEach((key) => {
+            (state[key] || []).forEach((meta) => {
+              members.push([meta.steamID || key, meta.username || '', meta.avatar || '']);
+            });
+          });
+          console.log('[EMPTY] presence sync', { count: members.length });
+          const divAppend = document.getElementById('toGen');
+          divAppend.innerHTML = '';
+          const seen = new Set();
+          members.forEach((m) => {
+            const img = m[2];
+            if (img && !seen.has(img)) {
+              const el = document.createElement('img');
+              el.src = img;
+              divAppend.appendChild(el);
+              seen.add(img);
+            }
+          });
+        } catch (_) {}
+      });
+      channel.on('broadcast', { event: 'navigate' }, () => {
+        try { sessionStorage.setItem('stayOnList', '1'); document.cookie = 'stayOnList=1; path=/'; } catch (_) {}
+        window.location.href = '/list';
+      });
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.track({ steamID, username, avatar });
+        }
+      });
+    }
 
     // Initializes sessions for filtering
     sessionStorage.setItem('tagSelection', '');
@@ -85,13 +123,11 @@
     let button = document.getElementById('newList');
     button.addEventListener('click', function() {
         console.log('[EMPTY] Generate List clicked');
-        let steamID = Cookies.get('steamID');
-        let username = Cookies.get('username');
-        let avatar = Cookies.get('avatar');
-        let roomNumber = Cookies.get('roomNumber');
-        const payload = {steamID: steamID, username: username, avatar: avatar, roomNumber: roomNumber};
-        console.log('[EMPTY] emit newList', payload);
-        socket.emit('newList', payload);
+        try { sessionStorage.setItem('stayOnList', '1'); document.cookie = 'stayOnList=1; path=/'; } catch (_) {}
+        if (channel) {
+          channel.send({ type: 'broadcast', event: 'navigate', payload: {} });
+        }
+        window.location.href = '/list';
     });
 
     // Leave functionality to clear all user data
@@ -99,15 +135,10 @@
     leave.addEventListener('click', function() {
         let roomNumber = Cookies.get('roomNumber');
         sessionStorage.clear();
-        socket.emit('generateList2', {roomNumber: roomNumber});
         window.location.href = "/leave";
     });
 
-    // Dynamically updates the page when a user leaves
-    socket.on('refreshList2', () =>  {
-        console.log('[EMPTY] refreshList2 received -> reloading');
-        location.reload();
-    });
+    // Presence sync will update the UI for joins/leaves
     
     // redirects to list page
     socket.on('navigate', function() {
