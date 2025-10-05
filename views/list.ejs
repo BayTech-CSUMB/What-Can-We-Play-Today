@@ -231,7 +231,9 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       }
 
     // Render data returned by API
-    (function renderList(data){
+    renderList(data);
+
+    function renderList(data){
       console.log('[LIST] finalList received', {
         games: data && data.games ? data.games.length : 0,
         owners: data && data.owners ? data.owners.length : 0
@@ -644,7 +646,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
             });
         }
       }
-    });
+    }
 
     // Done rendering; handle any fetch errors
     } catch (e) {
