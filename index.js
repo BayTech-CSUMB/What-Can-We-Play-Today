@@ -541,15 +541,22 @@ async function checkGames(steamID) {
   // First we'll fetch the list of owned games per the users steamID.
   // An API function that will set gameCount and gameInfo to the total count
   // of a users games and aan array of their games respectively.
-  await steamWrapper
-    .getOwnedGames(steamID, null, true)
-    .then((result) => {
-      gameCount = result.data.count;
-      gameInfo = result.data.games;
-    })
-    .catch(console.error);
-    // TODO: check documentation for how to change the output log of this error
-    steamAPICount += 1;
+  let gameCount = 0;
+  let gameInfo = [];
+  try {
+    const result = await steamWrapper.getOwnedGames(steamID, null, true);
+    gameCount = result.data.count;
+    gameInfo = result.data.games;
+  } catch (err) {
+    console.error('CHECKGAMES: Steam API failed for', steamID, err.message || err);
+    return; // Cannot proceed without game data
+  }
+  steamAPICount += 1;
+
+  if (!gameCount || !Array.isArray(gameInfo) || gameInfo.length === 0) {
+    console.warn('CHECKGAMES: No games returned for', steamID, '(profile may be private)');
+    return;
+  }
 
   // We iterate through the users' games using the data from the above function
   for (let curGame = 0; curGame < gameCount; curGame++) {
@@ -731,6 +738,17 @@ app.post('/api/generate', async (req, res) => {
     const roomMembers = Array.isArray(members)
       ? members.map((m) => Array.isArray(m) ? m : [m.steamID || m.user_id || '', m.username || '', m.avatar || ''])
       : [];
+
+    // Merge in any additional members from socketRooms (e.g. demo pre-seeded members)
+    const socketRoom = socketRooms.find((r) => r.roomNumber === roomNumber);
+    if (socketRoom && Array.isArray(socketRoom.roomMembers)) {
+      const existingIDs = new Set(roomMembers.map((m) => m[0]));
+      socketRoom.roomMembers.forEach((m) => {
+        if (!existingIDs.has(m[0])) {
+          roomMembers.push(m);
+        }
+      });
+    }
 
     // Build base query
     let query = `SELECT * FROM Games NATURAL JOIN Users WHERE userID = ? AND is_multiplayer = 1`;
@@ -1399,6 +1417,11 @@ app.get("/demo", async (req, res) => {
           `76561198110151106`,
           `divinusmessor`,
           `https://avatars.steamstatic.com/175253b0d40f2bdf52f35622e6a4a0a104b5f444_medium.jpg`,
+        ],
+        [
+          `76561199516233321`,
+          `drslurpeemd`,
+          `https://avatars.steamstatic.com/b9fa08a1e25a9dadaebbab031b6b2974502416fa_medium.jpg`,
         ],
       ]);
     socketRooms.push(demoRoom);

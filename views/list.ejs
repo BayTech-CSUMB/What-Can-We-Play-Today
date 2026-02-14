@@ -129,6 +129,8 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
 
   // TODO: does everything need to be in sendMessage?
   // Connection used for sockets
+  let enrichRetryCount = 0;
+  const MAX_ENRICH_RETRIES = 3;
   const sendMessage = async () => {
     console.log('[LIST] sendMessage start');
     // Initializes data of user from cookies
@@ -212,9 +214,18 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
       const data = await resp.json();
       console.log('[LIST] /api/generate response', { keys: Object.keys(data || {}), games: data && data.games && data.games.length });
 
-      // If no games yet, ask server to process queued games and retry shortly
+      // If no games yet, ask server to process queued games and retry (up to MAX_ENRICH_RETRIES times)
       if (!data || !Array.isArray(data.games) || data.games.length === 0) {
-        console.warn('[LIST] No games yet; triggering enrichment + retry');
+        enrichRetryCount++;
+        console.warn('[LIST] No games yet; triggering enrichment + retry (' + enrichRetryCount + '/' + MAX_ENRICH_RETRIES + ')');
+        if (enrichRetryCount > MAX_ENRICH_RETRIES) {
+          console.error('[LIST] Max retries reached. No shared multiplayer games found.');
+          document.getElementById("animationContainer").style.display = "none";
+          document.getElementById("listPageLayout").style.display = "flex";
+          const listDiv = document.getElementById("listDiv") || document.getElementById("listPageLayout");
+          listDiv.innerHTML = '<div style="text-align:center; padding:2rem;"><h2>No shared multiplayer games found</h2><p>This can happen if a player\'s Steam profile or game details are set to private, or if room members don\'t share any multiplayer games.</p><p>Make sure all players have their Steam game details set to <strong>Public</strong>, then try again.</p></div>';
+          return;
+        }
         try {
           const r = await fetch('/api/cron/process-pending', { method: 'POST' });
           const j = await r.json().catch(() => ({}));
