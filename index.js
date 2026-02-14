@@ -101,7 +101,8 @@ const cors = require("cors");
 // Configure CORS for Express (allow localhost and Vercel preview/default domains)
 const originAllowList = [
   /^https?:\/\/localhost(?::\d+)?$/,
-  /^https:\/\/.*\.vercel\.app$/
+  /^https:\/\/.*\.vercel\.app$/,
+  /^https:\/\/(www\.)?whatcanweplay\.today$/
 ];
 
 app.use(cors({
