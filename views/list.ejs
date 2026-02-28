@@ -313,10 +313,13 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
         }
 
         let menuDiv = document.getElementById("menuDiv");
+        menuDiv.innerHTML = "";
         menuDiv.appendChild(menu);
 
         menu.addEventListener("change", filterBySelected);
       }
+
+      console.log("v1448ajf");
 
       dropDownMenu1();
       let catDiv = document.getElementById("tagPopupButton");
@@ -365,6 +368,7 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
         }
 
         let menuDiv = document.getElementById("genreDiv");
+        menuDiv.innerHTML = "";
         menuDiv.appendChild(menu);
 
         menu.addEventListener("change", filterBySelected2);
