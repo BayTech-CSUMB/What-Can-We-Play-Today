@@ -274,6 +274,13 @@ stylesheet: `listPage.css`}) %> <%- include('partials/navBarLogoutList.ejs') %>
 
       // Gets all the users and displays them together
       const roomMembersToAppend = document.querySelector("#roomMembersList");
+      // Fixed Member icons duplicating by clearing & re-adding the Members p 
+      // tag each time we generate user images w/in the room
+      const tempMembersText = document.createElement("p");
+      tempMembersText.innerText = "MEMBERS";
+      tempMembersText.classList.add(`leftHandLabels`);
+      roomMembersToAppend.innerHTML = "";
+      roomMembersToAppend.appendChild(tempMembersText);
       for (let i = 0; i < roomMembers.length; i++) {
         const userAvatar = document.createElement("img");
         userAvatar.src = roomMembers[i][2];
