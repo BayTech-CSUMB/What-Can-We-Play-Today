@@ -253,16 +253,18 @@ try {
     // Use Supabase for production/cloud deployment
     db = require('./database');
     console.log('Database: Using Supabase');
-  } else {
-    // Fallback to SQLite for local development
-    const sqlite = require("better-sqlite3")(`./private/games.db`);
-    sqlite.prepare(`CREATE TABLE IF NOT EXISTS PendingGames (
-      gameID TEXT PRIMARY KEY,
-      created_at TEXT
-    )`).run();
-    db = sqlite;
-    console.log('Database: Using SQLite');
   }
+//   Removed fallback case for local dev db to use SQLite
+//   } else {
+//     // Fallback to SQLite for local development
+//     const sqlite = require("better-sqlite3")(`./private/games.db`);
+//     sqlite.prepare(`CREATE TABLE IF NOT EXISTS PendingGames (
+//       gameID TEXT PRIMARY KEY,
+//       created_at TEXT
+//     )`).run();
+//     db = sqlite;
+//     console.log('Database: Using SQLite');
+//   }
 } catch (error) {
   console.error("Database initialization failed:", error.message);
   // Create a mock database object to prevent crashes
