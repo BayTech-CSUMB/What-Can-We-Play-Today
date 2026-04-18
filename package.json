@@ -13,7 +13,6 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.56.1",
     "axios": "^1.4.0",
-    "better-sqlite3": "^11.10.0",
     "clipboardy": "^3.0.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -27,8 +26,6 @@
     "node-steam-openid": "^1.1.0",
     "semver": "^7.5.4",
     "socket.io": "^4.7.1",
-    "sqlite": "^4.2.1",
-    "sqlite3": "^5.1.6",
     "steam-js-api": "^1.1.0"
   },
   "devDependencies": {
