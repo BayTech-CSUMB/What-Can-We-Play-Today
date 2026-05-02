@@ -6,3 +6,4 @@ private/*
 process.env
 .vercel
 .env*.local
+.claude*

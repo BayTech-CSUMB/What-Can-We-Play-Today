@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Steam API Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1b2838; color: #c6d4df; min-height: 100vh; }
+
+    /* ── header ── */
+    header { background: #171a21; padding: 18px 32px; border-bottom: 1px solid #2a475e; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    header h1 { font-size: 1.2rem; color: #66c0f4; font-weight: 700; }
+    header span { font-size: 0.8rem; color: #8f98a0; }
+    .status-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+    .pill { font-size: 0.75rem; background: #2a475e; border-radius: 20px; padding: 3px 10px; }
+    .pill b { color: #66c0f4; }
+
+    /* ── layout ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 28px 16px; display: flex; flex-direction: column; gap: 24px; }
+
+    /* ── cards ── */
+    .card { background: #16202d; border: 1px solid #2a475e; border-radius: 8px; padding: 22px 24px; }
+    .card h2 { font-size: 0.85rem; color: #66c0f4; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.07em; display: flex; align-items: center; gap: 8px; }
+    .card h2 .badge { background: #2a475e; border-radius: 4px; padding: 1px 7px; font-size: 0.7rem; color: #c6d4df; text-transform: none; letter-spacing: 0; }
+    .sub { font-size: 0.8rem; color: #8f98a0; margin-bottom: 14px; line-height: 1.5; }
+
+    /* ── inputs ── */
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    input[type="text"], input[type="number"], select {
+      background: #0e1822; border: 1px solid #2a475e; border-radius: 4px;
+      padding: 9px 13px; color: #c6d4df; font-size: 0.9rem; outline: none;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color: #66c0f4; }
+    input.wide { flex: 1; min-width: 200px; }
+    input.narrow { width: 110px; }
+    select { cursor: pointer; }
+
+    button {
+      background: #4c6b22; color: #d2e885; border: none; border-radius: 4px;
+      padding: 9px 18px; font-size: 0.85rem; cursor: pointer; font-weight: 600; white-space: nowrap;
+    }
+    button:hover { background: #5a7d28; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary { background: #2a475e; color: #66c0f4; }
+    .btn-secondary:hover { background: #1e3a52; }
+    .btn-sm { padding: 5px 11px; font-size: 0.78rem; }
+
+    /* ── chips ── */
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip { background: #2a475e; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; }
+    .chip .rm { background: none; color: #e05a5a; padding: 0; font-size: 1rem; line-height: 1; font-weight: 700; min-width: 0; }
+
+    /* ── filter bar ── */
+    .filter-bar { background: #0e1822; border: 1px solid #2a475e; border-radius: 6px; padding: 12px 16px; margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .filter-bar label { font-size: 0.78rem; color: #8f98a0; margin-right: 4px; }
+    .filter-group { display: flex; align-items: center; gap: 6px; }
+    .price-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .price-btn { background: #1b2838; border: 1px solid #2a475e; color: #c6d4df; border-radius: 4px; padding: 5px 11px; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
+    .price-btn.active, .price-btn:hover { border-color: #66c0f4; color: #66c0f4; }
+    .clear-filter { font-size: 0.75rem; color: #e05a5a; cursor: pointer; background: none; border: none; padding: 0; text-decoration: underline; }
+
+    /* ── results ── */
+    .result-meta { font-size: 0.82rem; color: #8f98a0; margin: 12px 0 10px; }
+    .result-meta b { color: #c6d4df; }
+    .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+
+    /* ── game card ── */
+    .game-card { background: #0e1822; border: 1px solid #2a475e; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.15s; }
+    .game-card:hover { border-color: #66c0f4; }
+    .game-card a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
+    .game-card img { width: 100%; aspect-ratio: 460/215; object-fit: cover; display: block; background: #111; }
+    .game-card .info { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .game-card .name { font-size: 0.88rem; font-weight: 600; color: #c6d4df; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .game-card .desc { font-size: 0.75rem; color: #8f98a0; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .game-card .price-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
+    .price-final { color: #beee11; font-weight: 700; font-size: 0.85rem; }
+    .price-original { text-decoration: line-through; color: #8f98a0; font-size: 0.78rem; }
+    .price-discount { background: #4c6b22; color: #d2e885; border-radius: 3px; padding: 1px 5px; font-size: 0.72rem; font-weight: 700; }
+    .price-free { color: #5ba85a; font-weight: 700; font-size: 0.85rem; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 3px; }
+    .tag { font-size: 0.68rem; background: #1a3244; color: #66c0f4; border-radius: 3px; padding: 2px 6px; }
+    .tag.mp { background: #1a3a2a; color: #5ba85a; }
+    .tag.genre-tag { background: #2a2a3a; color: #a89adf; }
+    .tag.user-tag  { background: #2a1f2a; color: #c49adf; }
+
+    /* ── raw JSON ── */
+    pre { background: #0e1822; border: 1px solid #2a475e; border-radius: 4px; padding: 12px; font-size: 0.72rem; overflow-x: auto; margin-top: 10px; max-height: 320px; overflow-y: auto; color: #c6d4df; }
+
+    /* ── misc ── */
+    .error { color: #e05a5a; font-size: 0.85rem; padding: 10px 14px; background: #2a1a1a; border-radius: 4px; margin-top: 10px; }
+    .spinner { text-align: center; padding: 28px; color: #8f98a0; font-size: 0.85rem; }
+    .section-divider { border: none; border-top: 1px solid #2a475e; margin: 6px 0; }
+    .empty { color: #8f98a0; font-size: 0.85rem; padding: 20px; text-align: center; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Steam API Demo</h1>
+    <span>WhatCanWePlay — backend proof of concept</span>
+  </div>
+  <div class="status-pills" id="status-pills">
+    <span class="pill">Connecting…</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── 1. Library ─────────────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>1 · User Library <span class="badge">GetOwnedGames · no rate limit</span></h2>
+    <p class="sub">Fast lookup — returns the full list of games a user owns. No appdetails enrichment here, so no rate limiting applies.</p>
+    <div class="row">
+      <input class="wide" type="text" id="lib-id" placeholder="Steam ID  (e.g. 76561198016716226)" />
+      <button onclick="fetchLibrary()">Fetch Library</button>
+    </div>
+    <div id="lib-result"></div>
+  </div>
+
+  <!-- ── 2. Single game ─────────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>2 · Single Game Details <span class="badge">appdetails · rate limited</span></h2>
+    <p class="sub">Full enriched data for one game — name, price with discount, all Steam categories, genres, description. Uses the 1500ms rate-limited queue.</p>
+    <div class="row">
+      <input class="wide" type="text" id="game-id" placeholder="App ID  (730 = CS2 · 570 = Dota 2 · 440 = TF2)" />
+      <button onclick="fetchGame()">Look Up</button>
+    </div>
+    <div id="game-result"></div>
+  </div>
+
+  <!-- ── 3. Multiplayer games for one user ──────────────────────────────────── -->
+  <div class="card">
+    <h2>3 · My Multiplayer Games <span class="badge">streaming · sorted by playtime</span></h2>
+    <p class="sub">Games stream in one-by-one as they're enriched — sorted by playtime so your most-played games appear first. Cached results appear instantly; new lookups arrive every ~1.5s.</p>
+    <div class="row">
+      <input class="wide" type="text" id="mp-id" placeholder="Steam ID" />
+      <input class="narrow" type="number" id="mp-limit" placeholder="Limit (20)" min="1" max="60" />
+      <button onclick="fetchMultiplayer()">Find Multiplayer Games</button>
+    </div>
+    <div id="mp-progress" style="display:none;margin-top:12px;">
+      <div style="font-size:0.8rem;color:#8f98a0;margin-bottom:6px;" id="mp-progress-label">Fetching…</div>
+      <div style="background:#0e1822;border-radius:4px;height:6px;overflow:hidden;">
+        <div id="mp-progress-bar" style="background:#66c0f4;height:100%;width:0%;transition:width 0.3s;"></div>
+      </div>
+    </div>
+    <div id="mp-filters" style="display:none">
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label>Category</label>
+          <select id="mp-cat"><option value="">All categories</option></select>
+        </div>
+        <div class="filter-group">
+          <label>Genre</label>
+          <select id="mp-genre"><option value="">All genres</option></select>
+        </div>
+        <div class="filter-group price-row">
+          <label>Price</label>
+          <button class="price-btn" data-filter="free"    onclick="setPriceFilter(this,'mp')">Free</button>
+          <button class="price-btn" data-filter="under10" onclick="setPriceFilter(this,'mp')">Under $10</button>
+          <button class="price-btn" data-filter="under40" onclick="setPriceFilter(this,'mp')">Under $40</button>
+          <input class="narrow" type="number" id="mp-min" placeholder="Min $" />
+          <input class="narrow" type="number" id="mp-max" placeholder="Max $" />
+          <button class="btn-sm" onclick="setPriceFilter(null,'mp','range')">Go</button>
+        </div>
+        <button class="clear-filter" onclick="clearFilters('mp')">Clear filters</button>
+        <button class="btn-sm btn-secondary" onclick="applyMpFilters()">Apply</button>
+      </div>
+    </div>
+    <div id="mp-result"></div>
+  </div>
+
+  <!-- ── 4. Shared games ────────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>4 · Shared Multiplayer Games <span class="badge">core feature</span></h2>
+    <p class="sub">The main WhatCanWePlay feature — finds multiplayer games owned by <em>all</em> listed users. Filter the results by category, genre, or price.</p>
+    <div class="row">
+      <input class="wide" type="text" id="shared-id" placeholder="Add a Steam ID then press Add or Enter" />
+      <button class="btn-secondary" onclick="addSteamId()">Add</button>
+      <button onclick="fetchShared()">Find Shared Games</button>
+    </div>
+    <div class="chip-row" id="shared-chips"></div>
+    <div id="shared-filters" style="display:none">
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label>Category</label>
+          <select id="sh-cat"><option value="">All categories</option></select>
+        </div>
+        <div class="filter-group">
+          <label>Genre</label>
+          <select id="sh-genre"><option value="">All genres</option></select>
+        </div>
+        <div class="filter-group price-row">
+          <label>Price</label>
+          <button class="price-btn" data-filter="free"    onclick="setPriceFilter(this,'sh')">Free</button>
+          <button class="price-btn" data-filter="under10" onclick="setPriceFilter(this,'sh')">Under $10</button>
+          <button class="price-btn" data-filter="under40" onclick="setPriceFilter(this,'sh')">Under $40</button>
+          <input class="narrow" type="number" id="sh-min" placeholder="Min $" />
+          <input class="narrow" type="number" id="sh-max" placeholder="Max $" />
+          <button class="btn-sm" onclick="setPriceFilter(null,'sh','range')">Go</button>
+        </div>
+        <button class="clear-filter" onclick="clearFilters('sh')">Clear filters</button>
+        <button class="btn-sm btn-secondary" onclick="applyShFilters()">Apply</button>
+      </div>
+    </div>
+    <div id="shared-result"></div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ── Utilities ─────────────────────────────────────────────────────────────────
+async function apiFetch(url, opts) {
+  const res = await fetch(url, opts);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || res.statusText);
+  return json;
+}
+function setHtml(id, html) { document.getElementById(id).innerHTML = html; }
+function spinner(id) { setHtml(id, '<div class="spinner">Loading… (rate-limited calls may take a moment)</div>'); }
+function showError(id, msg) { setHtml(id, `<div class="error">${msg}</div>`); }
+
+function priceHtml(price) {
+  if (price.isFree || price.final === 'Free') return `<span class="price-free">Free</span>`;
+  let h = '';
+  if (price.discountPct > 0) h += `<span class="price-discount">-${price.discountPct}%</span> <span class="price-original">${price.initial}</span> `;
+  h += `<span class="price-final">${price.final}</span>`;
+  return h;
+}
+
+function gameCardHtml(game) {
+  const mpTags   = (game.multiplayerTypes || []).map(t => `<span class="tag mp">${t}</span>`).join('');
+  const genTags  = (game.genres || []).map(t => `<span class="tag genre-tag">${t}</span>`).join('');
+  const userTags = (game.tags || []).slice(0, 6).map(t => `<span class="tag user-tag">${t}</span>`).join('');
+  const catTags  = (game.categories || [])
+    .filter(c => !(game.multiplayerTypes || []).includes(c))
+    .slice(0, 3)
+    .map(t => `<span class="tag">${t}</span>`).join('');
+
+  return `
+    <div class="game-card">
+      <a href="${game.storeUrl}" target="_blank" rel="noopener">
+        <img src="${game.headerImage}" alt="${game.name}" loading="lazy" onerror="this.style.display='none'">
+        <div class="info">
+          <div class="name" title="${game.name}">${game.name}</div>
+          <div class="desc">${game.description}</div>
+          <div class="tag-row">${mpTags}</div>
+          <div class="tag-row">${genTags}${catTags}</div>
+          ${userTags ? `<div class="tag-row">${userTags}</div>` : ''}
+          <div class="price-line">${priceHtml(game.price)}</div>
+        </div>
+      </a>
+    </div>`;
+}
+
+function metaHtml(total, filtered) {
+  if (total === filtered) return `<div class="result-meta"><b>${total}</b> games</div>`;
+  return `<div class="result-meta"><b>${filtered}</b> of <b>${total}</b> games (filtered)</div>`;
+}
+
+function populateSelect(id, options, current) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">All</option>` + options.map(o =>
+    `<option value="${o}" ${o === current ? 'selected' : ''}>${o}</option>`
+  ).join('');
+}
+
+// ── Status ────────────────────────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const s = await apiFetch('/api/status');
+    document.getElementById('status-pills').innerHTML = `
+      <span class="pill">Status: <b>OK</b></span>
+      <span class="pill">Cached games: <b>${s.cache.cachedGames}</b></span>
+      <span class="pill">Cached tags: <b>${s.cache.cachedTags}</b></span>
+      <span class="pill">Libraries: <b>${s.cache.cachedLibraries}</b></span>
+      <span class="pill">appdetails: <b>${s.cache.appdetailsDelayMs}ms</b></span>
+      <span class="pill">SteamSpy: <b>${s.cache.steamspyDelayMs}ms</b></span>`;
+  } catch {
+    document.getElementById('status-pills').innerHTML = `<span class="pill" style="color:#e05a5a">Server offline</span>`;
+  }
+}
+loadStatus();
+setInterval(loadStatus, 8000);
+
+// ── 1. Library ────────────────────────────────────────────────────────────────
+async function fetchLibrary() {
+  const id = document.getElementById('lib-id').value.trim();
+  if (!id) return;
+  spinner('lib-result');
+  try {
+    const data = await apiFetch(`/api/library/${id}`);
+    const preview = data.games.slice(0, 80).map(g => `<span style="font-size:0.78rem;margin-right:6px;color:#8f98a0">${g.name || g.appid}</span>`).join('');
+    const more = data.count > 80 ? `<em style="font-size:0.75rem;color:#66c0f4"> …and ${data.count - 80} more</em>` : '';
+    setHtml('lib-result', `
+      <div class="result-meta"><b>${data.count}</b> games owned by <b>${id}</b></div>
+      <div style="max-height:140px;overflow-y:auto;line-height:2">${preview}${more}</div>`);
+  } catch (e) { showError('lib-result', e.message); }
+  loadStatus();
+}
+
+// ── 2. Single game ────────────────────────────────────────────────────────────
+async function fetchGame() {
+  const id = document.getElementById('game-id').value.trim();
+  if (!id) return;
+  spinner('game-result');
+  try {
+    const g = await apiFetch(`/api/game/${id}`);
+    setHtml('game-result', `
+      <div class="result-meta">App ID <b>${id}</b> · ${g.isMultiplayer ? '<span style="color:#5ba85a">✓ Multiplayer</span>' : '<span style="color:#e05a5a">✗ Not multiplayer</span>'}</div>
+      <div class="game-grid">${gameCardHtml(g)}</div>
+      <pre>${JSON.stringify(g, null, 2)}</pre>`);
+  } catch (e) { showError('game-result', e.message); }
+  loadStatus();
+}
+
+// ── 3. Multiplayer (single user) — SSE streaming ─────────────────────────────
+let mpState = { allCategories: [], allGenres: [], games: [], priceFilter: '', steamId: '' };
+let mpEventSource = null;
+
+async function fetchMultiplayer() {
+  const id = document.getElementById('mp-id').value.trim();
+  if (!id) return;
+  const limit = document.getElementById('mp-limit').value || 20;
+  mpState = { allCategories: [], allGenres: [], games: [], priceFilter: '', steamId: id };
+
+  // Close any existing stream
+  if (mpEventSource) { mpEventSource.close(); mpEventSource = null; }
+
+  document.getElementById('mp-filters').style.display = 'none';
+  setHtml('mp-result', '<div class="game-grid" id="mp-game-grid"></div>');
+  document.getElementById('mp-progress').style.display = '';
+  document.getElementById('mp-progress-label').textContent = 'Fetching library…';
+  document.getElementById('mp-progress-bar').style.width = '0%';
+
+  let found = 0;
+  let totalOwned = 0;
+
+  mpEventSource = new EventSource(`/api/multiplayer/${id}/stream?limit=${limit}`);
+
+  mpEventSource.onmessage = (e) => {
+    const item = JSON.parse(e.data);
+
+    if (item.error) {
+      showError('mp-result', item.error);
+      mpEventSource.close();
+      document.getElementById('mp-progress').style.display = 'none';
+      return;
+    }
+
+    if (item.done) {
+      mpEventSource.close();
+      mpEventSource = null;
+      document.getElementById('mp-progress').style.display = 'none';
+
+      // Build filter options from accumulated games
+      mpState.allCategories = [...new Set(mpState.games.flatMap(g => g.categories))].sort();
+      mpState.allGenres     = [...new Set(mpState.games.flatMap(g => g.genres))].sort();
+      populateSelect('mp-cat',   mpState.allCategories, '');
+      populateSelect('mp-genre', mpState.allGenres, '');
+
+      if (mpState.games.length > 0) {
+        document.getElementById('mp-filters').style.display = '';
+      }
+
+      // Update meta line
+      const deferred = item.deferred > 0
+        ? ` <span style="color:#8f98a0">(${item.deferred} more games not yet enriched — re-run to load them from cache)</span>`
+        : '';
+      const meta = document.getElementById('mp-meta');
+      if (meta) meta.innerHTML = `<b>${found}</b> multiplayer games found from <b>${item.totalOwned}</b> owned${deferred}`;
+
+      loadStatus();
+      return;
+    }
+
+    if (!item.game) return;
+
+    const game = item.game;
+    mpState.games.push(game);
+    found++;
+    totalOwned = item.totalOwned || totalOwned;
+
+    // Append card to grid immediately
+    const grid = document.getElementById('mp-game-grid');
+    if (grid) {
+      grid.insertAdjacentHTML('beforeend', gameCardHtml(game));
+    }
+
+    // Update progress
+    const pct = Math.min(95, (found / (limit * 0.6 || 1)) * 80);
+    document.getElementById('mp-progress-bar').style.width = pct + '%';
+    const src = item.fromCache ? '(cached)' : '(fetched)';
+    document.getElementById('mp-progress-label').textContent =
+      `Found ${found} multiplayer games so far… ${src}`;
+
+    // Add meta row above grid if not yet there
+    if (!document.getElementById('mp-meta')) {
+      grid.insertAdjacentHTML('beforebegin', '<div class="result-meta" id="mp-meta"></div>');
+    }
+  };
+
+  mpEventSource.onerror = () => {
+    if (mpEventSource) {
+      mpEventSource.close();
+      mpEventSource = null;
+    }
+    document.getElementById('mp-progress').style.display = 'none';
+  };
+}
+
+function renderMpGames(data) {
+  if (!data.games.length) { setHtml('mp-result', '<div class="empty">No games matched the current filters.</div>'); return; }
+  setHtml('mp-result', metaHtml(data.total, data.filtered) + `<div class="game-grid">${data.games.map(gameCardHtml).join('')}</div>`);
+}
+
+async function applyMpFilters() {
+  const id    = mpState.steamId;
+  const limit = document.getElementById('mp-limit').value || 20;
+  const cat   = document.getElementById('mp-cat').value;
+  const genre = document.getElementById('mp-genre').value;
+  const pf    = mpState.priceFilter || '';
+  const min   = document.getElementById('mp-min').value;
+  const max   = document.getElementById('mp-max').value;
+
+  // Filter client-side from accumulated games (instant, no new API calls)
+  let filtered = mpState.games;
+  if (cat)   filtered = filtered.filter(g => g.categories.includes(cat));
+  if (genre) filtered = filtered.filter(g => g.genres.includes(genre));
+  if (pf === 'free')    filtered = filtered.filter(g => g.price.isFree || g.price.final === 'Free');
+  if (pf === 'under10') filtered = filtered.filter(g => {
+    const p = parseFloat((g.price.final || '').replace(/[^0-9.]/g, '')) || 0;
+    return g.price.isFree || p <= 10;
+  });
+  if (pf === 'under40') filtered = filtered.filter(g => {
+    const p = parseFloat((g.price.final || '').replace(/[^0-9.]/g, '')) || 0;
+    return g.price.isFree || p <= 40;
+  });
+  if (pf === 'range') {
+    const lo = parseFloat(min) || 0, hi = parseFloat(max) || Infinity;
+    filtered = filtered.filter(g => {
+      const p = parseFloat((g.price.final || '').replace(/[^0-9.]/g, '')) || 0;
+      return p >= lo && p <= hi;
+    });
+  }
+
+  setHtml('mp-result',
+    metaHtml(mpState.games.length, filtered.length) +
+    `<div class="game-grid">${filtered.map(gameCardHtml).join('')}</div>`
+  );
+  document.getElementById('mp-filters').style.display = '';
+}
+
+// ── 4. Shared games ───────────────────────────────────────────────────────────
+const steamIds = [];
+let shState = { priceFilter: '' };
+
+function addSteamId() {
+  const val = document.getElementById('shared-id').value.trim();
+  if (!val || steamIds.includes(val)) return;
+  steamIds.push(val);
+  document.getElementById('shared-id').value = '';
+  renderChips();
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('shared-id').addEventListener('keydown', e => { if (e.key === 'Enter') addSteamId(); });
+});
+
+function removeId(id) {
+  const i = steamIds.indexOf(id);
+  if (i !== -1) steamIds.splice(i, 1);
+  renderChips();
+}
+function renderChips() {
+  document.getElementById('shared-chips').innerHTML = steamIds
+    .map(id => `<div class="chip">${id}<button class="rm" onclick="removeId('${id}')">×</button></div>`)
+    .join('');
+}
+
+async function fetchShared() {
+  if (steamIds.length < 2) { showError('shared-result', 'Add at least 2 Steam IDs first.'); return; }
+  spinner('shared-result');
+  document.getElementById('shared-filters').style.display = 'none';
+  try {
+    const data = await apiFetch('/api/shared', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ steamIds, limit: 30 }),
+    });
+    populateSelect('sh-cat',   data.allCategories, '');
+    populateSelect('sh-genre', data.allGenres,     '');
+    document.getElementById('shared-filters').style.display = '';
+    renderSharedGames(data);
+  } catch (e) { showError('shared-result', e.message); }
+  loadStatus();
+}
+
+function renderSharedGames(data) {
+  if (!data.games.length) { setHtml('shared-result', '<div class="empty">No shared multiplayer games found with current filters.</div>'); return; }
+  setHtml('shared-result', metaHtml(data.total, data.filtered) + `<div class="game-grid">${data.games.map(e => gameCardHtml(e.game)).join('')}</div>`);
+}
+
+async function applyShFilters() {
+  const cat   = document.getElementById('sh-cat').value;
+  const genre = document.getElementById('sh-genre').value;
+  const pf    = shState.priceFilter || '';
+  const min   = document.getElementById('sh-min').value;
+  const max   = document.getElementById('sh-max').value;
+
+  spinner('shared-result');
+  try {
+    const data = await apiFetch('/api/shared', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ steamIds, limit: 30, category: cat, genre, priceFilter: pf, minPrice: min, maxPrice: max }),
+    });
+    populateSelect('sh-cat',   data.allCategories, cat);
+    populateSelect('sh-genre', data.allGenres,     genre);
+    renderSharedGames(data);
+  } catch (e) { showError('shared-result', e.message); }
+}
+
+// ── Price filter buttons ──────────────────────────────────────────────────────
+function setPriceFilter(btn, scope, override) {
+  const filter = override || (btn && btn.dataset.filter) || '';
+  if (scope === 'mp') mpState.priceFilter = filter;
+  else shState.priceFilter = filter;
+
+  // Toggle button active state
+  const prefix = scope === 'mp' ? 'mp' : 'sh';
+  document.querySelectorAll(`#${prefix}-filters .price-btn`).forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+function clearFilters(scope) {
+  const prefix = scope === 'mp' ? 'mp' : 'sh';
+  document.getElementById(`${prefix}-cat`).value   = '';
+  document.getElementById(`${prefix}-genre`).value = '';
+  document.getElementById(`${prefix}-min`).value   = '';
+  document.getElementById(`${prefix}-max`).value   = '';
+  document.querySelectorAll(`#${prefix}-filters .price-btn`).forEach(b => b.classList.remove('active'));
+  if (scope === 'mp') { mpState.priceFilter = ''; applyMpFilters(); }
+  else { shState.priceFilter = ''; applyShFilters(); }
+}
+</script>
+</body>
+</html>
