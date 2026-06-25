@@ -33,9 +33,12 @@ export default function Privacy() {
                 <h2>CHANGES</h2>
             
                 <p>We may update this privacy policy from time to time in order to reflect, for example, changes to our practices or for other operational, legal or regulatory reasons.</p>
+            
                 <h2>CONTACT US</h2>
+            
                 <p>For more information about our privacy practices, if you have questions, or if you would like to make a complaint, please contact us by e-mail at [insert email address] or by mail using the details provided below:</p>
-                <p>Baytech, CSU Monterey Bay,</p>
+                <p>Baytech,CSU Monterey Bay,</p>
+            
                 <p>Please note that this is a basic privacy policy and may not cover all aspects of the application, as this is a school project</p>
             </div>
         </div>
