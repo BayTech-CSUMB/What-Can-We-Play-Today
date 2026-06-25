@@ -1,0 +1,25 @@
+.mainBox {
+    background-color: #171A21;
+    // Ensure proper spacing
+    max-width: 50vw;
+    margin-top: 6vh;
+    padding: clamp(6vh, 6vmin, 8vh);
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.25),
+        0 10px 10px rgba(0, 0, 0, 0.22);
+    // Ensure inner items are centered & aligned vertically 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    p {
+        margin-bottom: 1rem;
+    }
+}
+
+.mainImage {
+    // Keeps the image dynamically sized to the largest it can be, w/ a lil 
+    // padding to shrink it to match the OG styling
+    width: stretch;
+    height: auto;
+    padding: 1vh 2vw;
+}

@@ -1,5 +1,3 @@
-import '../../styles/_app.scss'
-
 export default function Privacy() {
   return (
       <div>
@@ -37,7 +35,7 @@ export default function Privacy() {
                 <h2>CONTACT US</h2>
             
                 <p>For more information about our privacy practices, if you have questions, or if you would like to make a complaint, please contact us by e-mail at [insert email address] or by mail using the details provided below:</p>
-                <p>Baytech,CSU Monterey Bay,</p>
+                <p>Baytech, CSU Monterey Bay,</p>
             
                 <p>Please note that this is a basic privacy policy and may not cover all aspects of the application, as this is a school project</p>
             </div>

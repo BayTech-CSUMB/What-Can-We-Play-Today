@@ -1,10 +1,11 @@
 // import Link from "next/link";
-import '../styles/_app.scss'
+import './globals.css';
 import HomePageBox from './ui/HomePageBox';
 
 export default function Home() {
   return (
-    <HomePageBox/ >
-    
+    <main>
+        <HomePageBox/>
+    </main>
   );
 }

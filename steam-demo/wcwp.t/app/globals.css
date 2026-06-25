@@ -3,6 +3,7 @@
 :root {
   --background: #17293E;
   --foreground: #171717;
+  --mainGradient: #213e59;
   /* --background: #ffffff;
   --foreground: #171717; */
 }
@@ -25,4 +26,15 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Added a center alignment to our global standards */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  /* I believe this was used in every page so it's fine to leave as a global */
+  background-image: linear-gradient(90deg,
+            rgba(0, 0, 0, 0) 10%,
+            var(--mainGradient) 30%,
+            var(--mainGradient) 80%,
+            rgba(0, 0, 0, 0) 90%);
 }
